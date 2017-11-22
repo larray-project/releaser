@@ -14,7 +14,7 @@ from os import chdir, makedirs
 from os.path import exists, join
 
 from releaser.utils import (PY2, call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
-                    replace_lines, release_changes, echocall)
+                            git_remote_last_rev, replace_lines, release_changes, echocall)
 
 
 # ------------------------- #
@@ -348,6 +348,17 @@ def cleanup(config):
 # end of steps #
 # ------------ #
 
+
+def update_config_for_conda(config, github_repository, feedstock_repository, tmp_dir):
+    package_name = config['package_name']
+    github_user = config['github_user']
+    config['tmp_dir'] = join(tmp_dir, "conda_{}_new_release".format(package_name))
+    config['build_dir'] = join(config['tmp_dir'], 'build')
+    config['repository'] = github_repository
+    config['feedstock_repository'] = "https://github.com/{}/{}-feedstock.git".format(github_user, package_name)
+    return config
+
+
 steps_funcs = [
     #########################
     # CREATE LARRAY PACKAGE #
@@ -391,7 +402,38 @@ steps_funcs = [
 ]
 
 
-def make_release(package_name, release_name='dev', steps=':', branch='master'):
+# src_documentation = join('doc', 'source')
+
+def set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir):
+    if release_name != 'dev':
+        if 'pre' in release_name:
+            raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
+        if '-' in release_name:
+            raise ValueError("- is not supported anymore")
+
+        release_name = long_release_name(release_name)
+
+    rev = git_remote_last_rev(local_repository, 'refs/heads/{}'.format(branch))
+    public_release = release_name != 'dev'
+    if not public_release:
+        # take first 7 digits of commit hash
+        release_name = rev[:7]
+
+    config = {'module_name': module_name,
+              'branch': branch,
+              'release_name':release_name,
+              'rev': rev,
+              'repository': local_repository,
+              'src_documentation': src_documentation,
+              'tmp_dir': join(tmp_dir, "{}_new_release".format(module_name)),
+              'build_dir': join(tmp_dir, "{}_new_release".format(module_name), 'build'),
+              'public_release': public_release,
+              }
+    return config
+
+
+def make_release(local_repository, module_name, src_documentation, release_name='dev', steps=':', branch='master',
+                 tmp_dir=None):
     func_names = [f.__name__ for f, desc in steps_funcs]
     if ':' in steps:
         start, stop = steps.split(':')
@@ -403,27 +445,12 @@ def make_release(package_name, release_name='dev', steps=':', branch='master'):
         start = func_names.index(steps)
         stop = start + 1
 
-    if release_name != 'dev':
-        if 'pre' in release_name:
-            raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
-        if '-' in release_name:
-            raise ValueError("- is not supported anymore")
+    if tmp_dir is None:
+        tmp_dir = r"c:\tmp" if sys.platform == "win32" else "/tmp"
 
-        release_name = long_release_name(release_name)
-
-    config = get_config(package_name=package_name, release_name=release_name, branch=branch)
+    config = set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir)
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:
             do(step_desc, step_func, config)
         else:
             step_func(config)
-
-
-if __name__ == '__main__':
-    argv = sys.argv
-    if len(argv) < 2:
-        print("Usage: {} release_name|dev [step|startstep:stopstep] [branch]".format(argv[0]))
-        print("steps:", ', '.join(f.__name__ for f, _ in steps_funcs))
-        sys.exit()
-
-    make_release(*argv[1:])
