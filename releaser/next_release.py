@@ -7,7 +7,7 @@ from os import chdir
 from shutil import copy
 
 from releaser.utils import relname2fname, no, short, call
-from releaser.make_release import create_tmp_directory, clone_repository, update_version, push
+from releaser.make_release import update_version, push
 
 
 def update_changelog(config):
@@ -54,18 +54,13 @@ In development.
         call(['git', 'add', fpath])
 
 
-def add_release(package_name, release_name, branch='master'):
-    assert '-dev' not in release_name
-    config = get_config(package_name=package_name, release_name=release_name, branch=branch)
-    create_tmp_directory(config)
-    clone_repository(config)
-    update_changelog(config)
-    config['release_name'] = release_name+'-dev'
+def add_release(local_repository, release_name, branch='master'):
+    update_changelog(release_name)
+    config = {'branch': branch,
+              'release_name': release_name+'-dev',
+              'repository': local_repository,
+              'build_dir': local_repository,
+              'public_release': True
+              }
     update_version(config)
     push(config)
-
-
-if __name__ == '__main__':
-    from sys import argv
-
-    add_release(*argv[1:])
