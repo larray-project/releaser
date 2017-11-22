@@ -7,7 +7,6 @@ from os import chdir
 from shutil import copy
 
 from releaser.utils import relname2fname, no, short, call
-from releaser.config import get_config
 from releaser.make_release import create_tmp_directory, clone_repository, update_version, push
 
 

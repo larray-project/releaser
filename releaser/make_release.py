@@ -15,7 +15,6 @@ from os.path import exists, join
 
 from releaser.utils import (PY2, call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
                     replace_lines, release_changes, echocall)
-from releaser.config import get_config, update_config_for_conda
 
 
 # ------------------------- #
