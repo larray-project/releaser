@@ -7,15 +7,12 @@
 from __future__ import print_function, unicode_literals
 
 import sys
-import hashlib
-import urllib.request as request
 from datetime import date
 from os import chdir, makedirs
 from os.path import exists, join
 
 from releaser.utils import (PY2, call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
-                    replace_lines, release_changes, echocall)
-from releaser.config import get_config, update_config_for_conda
+                            git_remote_last_rev, replace_lines, release_changes, echocall)
 
 
 # ------------------------- #
@@ -223,36 +220,6 @@ def update_changelog(config):
         call(['git', 'commit', '-m', '"update release date in changes.rst"', fpath])
 
 
-def update_version_conda_forge_package(config):
-    if not config['public_release']:
-        return
-
-    chdir(config['build_dir'])
-
-    # compute sha256 of archive of current release
-    version = short(config['release_name'])
-    url = config['repository'] + '/archive/{version}.tar.gz'.format(version=version)
-    print('Computing SHA256 from archive {url}'.format(url=url), end=' ')
-    with request.urlopen(url) as response:
-        sha256 = hashlib.sha256(response.read()).hexdigest()
-        print('done.')
-        print('SHA256: ', sha256)
-
-    # set version and sha256 in meta.yml file
-    meta_file = r'recipe\meta.yaml'
-    changes = [('set version', '{{% set version = "{version}" %}}'.format(version=version)),
-               ('set sha256', '{{% set sha256 = "{sha256}" %}}'.format(sha256=sha256))]
-    replace_lines(meta_file, changes)
-
-    # add, commit and push
-    print(call(['git', 'status', '-s']))
-    print(call(['git', 'diff', meta_file]))
-    if no('Does that last changes look right?'):
-        exit(1)
-    do('Adding', call, ['git', 'add', meta_file])
-    do('Commiting', call, ['git', 'commit', '-m', '"bump to version {version}"'.format(version=version)])
-
-
 def build_doc(config):
     chdir(config['build_dir'])
     chdir('doc')
@@ -312,6 +279,7 @@ def pull(config):
     do('Pulling changes in {repository}'.format(**config),
        call, ['git', 'pull', '--ff-only', '--tags', config['build_dir'], config['branch']])
 
+
 def push(config):
     if not config['public_release']:
         return
@@ -319,26 +287,6 @@ def push(config):
     chdir(config['build_dir'])
     do('Pushing main repository changes to GitHub',
        call, ['git', 'push', 'origin', config['branch'], '--follow-tags'])
-
-
-def pull_conda_forge(config):
-    if not config['public_release']:
-        return
-
-    chdir(config['build_dir'])
-    branch = config['branch']
-    repository = config['repository']
-    do('Rebasing from upstream {branch}'.format(branch=branch),
-       call, ['git', 'pull', '--rebase', repository, branch])
-
-
-def push_conda_forge(config):
-    if not config['public_release']:
-        return
-
-    chdir(config['build_dir'])
-    do('Pushing changes to GitHub',
-       call, ['git', 'push', 'origin', config['branch']])
 
 
 def cleanup(config):
@@ -350,9 +298,6 @@ def cleanup(config):
 # ------------ #
 
 steps_funcs = [
-    #########################
-    # CREATE LARRAY PACKAGE #
-    #########################
     (check_local_repo, ''),
     (create_tmp_directory, ''),
     (clone_repository, ''),
@@ -379,20 +324,41 @@ steps_funcs = [
     (push_on_pypi, 'Pushing on Pypi'),
     # assume the tar archive for the new release exists
     (cleanup, 'Cleaning up'),
-    ########################################
-    # UPDATE LARRAY PACKAGE ON CONDA-FORGE #
-    ########################################
-    (update_config_for_conda, 'Setting config in order to update packages on conda-forge'),
-    (create_tmp_directory, ''),
-    (clone_repository, ''),
-    (update_version_conda_forge_package, ''),
-    (pull_conda_forge, ''),
-    (push_conda_forge, ''),
-    (cleanup, 'Cleaning up'),
 ]
 
 
-def make_release(package_name, release_name='dev', steps=':', branch='master'):
+def set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir):
+    if release_name != 'dev':
+        if 'pre' in release_name:
+            raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
+        if '-' in release_name:
+            raise ValueError("- is not supported anymore")
+
+        release_name = long_release_name(release_name)
+
+    rev = git_remote_last_rev(local_repository, 'refs/heads/{}'.format(branch))
+    public_release = release_name != 'dev'
+    if not public_release:
+        # take first 7 digits of commit hash
+        release_name = rev[:7]
+
+    if tmp_dir is None:
+        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_release".format(module_name))
+
+    config = {'module_name': module_name,
+              'branch': branch,
+              'release_name':release_name,
+              'rev': rev,
+              'repository': local_repository,
+              'src_documentation': src_documentation,
+              'tmp_dir': tmp_dir,
+              'build_dir': join(tmp_dir, 'build'),
+              'public_release': public_release,
+              }
+    return config
+
+
+def run_steps(config, steps, steps_funcs):
     func_names = [f.__name__ for f, desc in steps_funcs]
     if ':' in steps:
         start, stop = steps.split(':')
@@ -404,15 +370,6 @@ def make_release(package_name, release_name='dev', steps=':', branch='master'):
         start = func_names.index(steps)
         stop = start + 1
 
-    if release_name != 'dev':
-        if 'pre' in release_name:
-            raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
-        if '-' in release_name:
-            raise ValueError("- is not supported anymore")
-
-        release_name = long_release_name(release_name)
-
-    config = get_config(package_name=package_name, release_name=release_name, branch=branch)
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:
             do(step_desc, step_func, config)
@@ -420,11 +377,8 @@ def make_release(package_name, release_name='dev', steps=':', branch='master'):
             step_func(config)
 
 
-if __name__ == '__main__':
-    argv = sys.argv
-    if len(argv) < 2:
-        print("Usage: {} release_name|dev [step|startstep:stopstep] [branch]".format(argv[0]))
-        print("steps:", ', '.join(f.__name__ for f, _ in steps_funcs))
-        sys.exit()
+def make_release(local_repository, module_name, release_name='dev', steps=':', branch='master', tmp_dir=None,
+                 src_documentation=None):
+    config = set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir)
+    run_steps(config, steps, steps_funcs)
 
-    make_release(*argv[1:])
