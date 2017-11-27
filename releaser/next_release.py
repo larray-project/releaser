@@ -54,10 +54,12 @@ In development.
         call(['git', 'add', fpath])
 
 
-def add_release(local_repository, release_name, branch='master'):
+def add_release(local_repository, package_name, module_name, release_name, branch='master'):
     update_changelog(release_name)
     config = {'branch': branch,
               'release_name': release_name+'-dev',
+              'package_name': package_name,
+              'module_name': module_name,
               'repository': local_repository,
               'build_dir': local_repository,
               'public_release': True
