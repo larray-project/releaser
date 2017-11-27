@@ -191,7 +191,7 @@ def update_changelog(config):
     """
     Update release date in changes.rst
     """
-    if 'src_documentation' in config:
+    if config['src_documentation'] is not None:
         chdir(config['build_dir'])
 
         if not config['public_release']:

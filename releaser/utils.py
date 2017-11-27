@@ -216,7 +216,7 @@ def relname2fname(release_name):
 
 
 def release_changes(config):
-    if 'src_documentation' in config:
+    if config['src_documentation'] is not None:
         directory = join(config['src_documentation'], "changes")
         fname = relname2fname(config['release_name'])
         with open(os.path.join(config['build_dir'], directory, fname), encoding='utf-8-sig') as f:
