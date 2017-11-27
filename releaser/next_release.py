@@ -11,7 +11,7 @@ from releaser.make_release import update_version, push
 
 
 def update_changelog(config):
-    if 'src_documentation' in config:
+    if config['src_documentation'] is not None:
         chdir(config['build_dir'])
         release_name = config['release_name']
         src_documentation = config['src_documentation']
