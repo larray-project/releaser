@@ -327,7 +327,7 @@ steps_funcs = [
 ]
 
 
-def set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir):
+def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir):
     if release_name != 'dev':
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
@@ -345,10 +345,11 @@ def set_config(local_repository, module_name, release_name, branch, src_document
     if tmp_dir is None:
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_release".format(module_name))
 
-    config = {'module_name': module_name,
+    config = {'rev': rev,
               'branch': branch,
               'release_name':release_name,
-              'rev': rev,
+              'package_name': package_name,
+              'module_name': module_name,
               'repository': local_repository,
               'src_documentation': src_documentation,
               'tmp_dir': tmp_dir,
@@ -377,8 +378,7 @@ def run_steps(config, steps, steps_funcs):
             step_func(config)
 
 
-def make_release(local_repository, module_name, release_name='dev', steps=':', branch='master', tmp_dir=None,
-                 src_documentation=None):
-    config = set_config(local_repository, module_name, release_name, branch, src_documentation, tmp_dir)
+def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',
+                 src_documentation=None, tmp_dir=None):
+    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir)
     run_steps(config, steps, steps_funcs)
-
