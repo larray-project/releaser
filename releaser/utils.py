@@ -99,7 +99,7 @@ def branchname(statusline):
 
 def yes(msg, default='y'):
     choices = ' ({}/{}) '.format(*tuple(c.capitalize() if c == default else c
-                                  for c in ('y', 'n')))
+                                        for c in ('y', 'n')))
     answer = None
     while answer not in ('', 'y', 'n'):
         if answer is not None:
@@ -245,6 +245,7 @@ def replace_lines(fpath, changes, end="\n"):
                     lines[i] = new_line + end
     with open(fpath, 'w') as f:
         f.writelines(lines)
+
 
 def git_remote_last_rev(url, branch=None):
     """

@@ -345,19 +345,21 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         release_name = rev[:7]
 
     if tmp_dir is None:
-        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_release".format(module_name))
+        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp",
+                       "{}_release".format(module_name))
 
-    config = {'rev': rev,
-              'branch': branch,
-              'release_name':release_name,
-              'package_name': package_name,
-              'module_name': module_name,
-              'repository': local_repository,
-              'src_documentation': src_documentation,
-              'tmp_dir': tmp_dir,
-              'build_dir': join(tmp_dir, 'build'),
-              'public_release': public_release,
-              }
+    config = {
+        'rev': rev,
+        'branch': branch,
+        'release_name': release_name,
+        'package_name': package_name,
+        'module_name': module_name,
+        'repository': local_repository,
+        'src_documentation': src_documentation,
+        'tmp_dir': tmp_dir,
+        'build_dir': join(tmp_dir, 'build'),
+        'public_release': public_release,
+    }
     return config
 
 

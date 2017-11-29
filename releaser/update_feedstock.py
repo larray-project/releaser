@@ -72,14 +72,15 @@ def set_config_conda(main_repository, feedstock_repository, module_name, version
     if tmp_dir is None:
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_feedstock".format(module_name))
 
-    config = {'module_name': module_name,
-              'branch': branch,
-              'version': version,
-              'main_repository': main_repository,
-              'repository': feedstock_repository,
-              'tmp_dir': tmp_dir,
-              'build_dir': join(tmp_dir, 'build'),
-              }
+    config = {
+        'module_name': module_name,
+        'branch': branch,
+        'version': version,
+        'main_repository': main_repository,
+        'repository': feedstock_repository,
+        'tmp_dir': tmp_dir,
+        'build_dir': join(tmp_dir, 'build'),
+    }
     return config
 
 
