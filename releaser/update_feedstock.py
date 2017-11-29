@@ -9,11 +9,11 @@ from __future__ import print_function, unicode_literals
 import sys
 import hashlib
 import urllib.request as request
-from os import chdir
 from os.path import join
 
-from releaser.utils import PY2, call, do, yes, no, short, replace_lines
+from releaser.utils import call, echocall, doechocall, no, replace_lines, chdir
 from releaser.make_release import create_tmp_directory, clone_repository, cleanup, run_steps
+
 
 # ----- #
 # steps #
@@ -38,18 +38,17 @@ def update_version_conda_forge_package(config):
     replace_lines(meta_file, changes)
 
     # add, commit and push
-    print(call(['git', 'status', '-s']))
-    print(call(['git', 'diff', meta_file]))
+    print(echocall(['git', 'status', '-s']))
+    print(echocall(['git', 'diff', meta_file]))
     if no('Does that last changes look right?'):
         exit(1)
-    do('Adding', call, ['git', 'add', meta_file])
-    do('Commiting', call, ['git', 'commit', '-m', '"bump to version {version}"'.format(version=version)])
+    doechocall('Adding', ['git', 'add', meta_file])
+    doechocall('Commiting', ['git', 'commit', '-m', 'bump to version {version}'.format(version=version)])
 
 
 def push_conda_forge(config):
     chdir(config['build_dir'])
-    do('Pushing changes to GitHub',
-       call, ['git', 'push', 'origin', config['branch']])
+    doechocall('Pushing changes to GitHub', ['git', 'push', 'origin', config['branch']])
 
 
 # ------------ #

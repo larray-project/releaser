@@ -3,10 +3,9 @@
 # script to start a new release cycle
 # Licence: GPLv3
 from os.path import join
-from os import chdir
 from shutil import copy
 
-from releaser.utils import relname2fname, no, short, call
+from releaser.utils import relname2fname, no, short, echocall, chdir
 from releaser.make_release import update_version, push
 
 
@@ -51,7 +50,7 @@ In development.
             print('\n'.join(f.read().splitlines()[:20]))
         if no('Does the full changelog look right?'):
             exit(1)
-        call(['git', 'add', fpath])
+        echocall(['git', 'add', fpath])
 
 
 def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None):

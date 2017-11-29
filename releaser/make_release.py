@@ -8,11 +8,11 @@ from __future__ import print_function, unicode_literals
 
 import sys
 from datetime import date
-from os import chdir, makedirs
+from os import makedirs
 from os.path import exists, join
 
-from releaser.utils import (call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
-                            git_remote_last_rev, replace_lines, release_changes, echocall)
+from releaser.utils import (call, do, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
+                            git_remote_last_rev, replace_lines, release_changes, echocall, chdir)
 
 
 # ------------------------- #
@@ -21,7 +21,7 @@ from releaser.utils import (call, do, yes, no, zip_unpack, rmtree, branchname, s
 
 def create_source_archive(package_name, release_name, rev):
     archive_name = r'..\{}-{}-src.zip'.format(package_name, release_name)
-    call(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
+    echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
 def copy_release(release_name):
@@ -43,6 +43,7 @@ def check_bundle_archives(package_name, release_name):
 # -------------------------------- #
 # end of specific helper functions #
 # -------------------------------- #
+
 
 # ----- #
 # steps #
@@ -78,7 +79,7 @@ def check_local_repo(config):
           .format(**config, num_ahead=num_ahead), end='')
     if num_ahead:
         if yes(', do you want to push?'):
-            do('Pushing changes', call, ['git', 'push'])
+            doechocall('Pushing changes', ['git', 'push'])
     else:
         print()
 
@@ -104,7 +105,7 @@ def clone_repository(config):
     # by updating the temporary clone then push twice: first from the temporary clone to the "working copy clone" (eg
     # ~/devel/project) then to GitHub from there. The alternative to modify the "working copy clone" directly is worse
     # because it needs more complicated path handling that the 2 push approach.
-    do('Cloning repository', call, ['git', 'clone', '-b', config['branch'], config['repository'], 'build'])
+    doechocall('Cloning repository', ['git', 'clone', '-b', config['branch'], config['repository'], 'build'])
 
 
 def check_clone(config):
@@ -112,7 +113,7 @@ def check_clone(config):
 
     # check last commit
     print()
-    print(call(['git', 'log', '-1']))
+    print(echocall(['git', 'log', '-1'], end='\n'))
     print()
 
     if no('Does that last commit look right?'):
@@ -177,13 +178,13 @@ def update_version(config):
     replace_lines(setup_file, changes)
 
     # check, commit and push
-    print(call(['git', 'status', '-s']))
-    print(call(['git', 'diff', meta_file, init_file, setup_file]))
+    print(echocall(['git', 'status', '-s']))
+    print(echocall(['git', 'diff', meta_file, init_file, setup_file]))
     if no('Do the version update changes look right?'):
         exit(1)
-    do('Adding', call, ['git', 'add', meta_file, init_file, setup_file])
-    do('Commiting', call, ['git', 'commit', '-m', 'bump to version {}'.format(version)])
-    print(call(['git', 'log', '-1']))
+    doechocall('Adding', ['git', 'add', meta_file, init_file, setup_file])
+    doechocall('Committing', ['git', 'commit', '-m', 'bump version to {}'.format(version)])
+    print(echocall(['git', 'log', '-1']))
 
 
 def update_changelog(config):
@@ -219,16 +220,16 @@ def update_changelog(config):
             print('\n'.join(f.read().splitlines()[:20]))
         if no('Does the changelog look right?'):
             exit(1)
-        call(['git', 'commit', '-m', 'update release date in changes.rst', fpath])
+        echocall(['git', 'commit', '-m', 'update release date for {}'.format(short(release_name)), fpath])
 
 
 def build_doc(config):
     chdir(config['build_dir'])
     chdir('doc')
     if sys.platform == "win32":
-        call('buildall.bat')
+        echocall('buildall.bat')
     else:
-        call('buildall.sh')
+        echocall('buildall.sh')
 
 
 def final_confirmation(config):
@@ -252,7 +253,7 @@ def tag_release(config):
         return
 
     release_name = config['release_name']
-    call(['git', 'tag', '-a', release_name, '-m', 'tag release {}'.format(release_name)])
+    echocall(['git', 'tag', '-a', release_name, '-m', 'tag release {}'.format(release_name)])
 
 
 def push_on_pypi(config):
@@ -261,14 +262,14 @@ def push_on_pypi(config):
     if not config['public_release']:
         return
 
+    cmd = ['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal', 'upload', '-r', 'pypi']
     msg = """Ready to push on pypi? If so, command line 
-'python setup.py clean register sdist bdist_wheel --universal upload -r pypi' 
+    {} 
 will now be executed.
-"""
+""".format(' '.join(cmd))
     if no(msg):
         exit(1)
-    call(['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal',
-          'upload', '-r', 'pypi'])
+    echocall(cmd)
 
 
 def pull(config):
@@ -277,18 +278,18 @@ def pull(config):
 
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
-    chdir(config['build_dir'])
-    do('Pulling changes in {repository}'.format(**config),
-       call, ['git', 'pull', '--ff-only', '--tags', config['build_dir'], config['branch']])
+    chdir(config['repository'])
+    doechocall('Pulling changes in {repository}'.format(**config),
+               ['git', 'pull', '--ff-only', '--tags', config['build_dir'], config['branch']])
 
 
 def push(config):
     if not config['public_release']:
         return
 
-    chdir(config['build_dir'])
-    do('Pushing main repository changes to GitHub',
-       call, ['git', 'push', 'origin', config['branch'], '--follow-tags'])
+    chdir(config['repository'])
+    doechocall('Pushing main repository changes to GitHub',
+               ['git', 'push', 'origin', config['branch'], '--follow-tags'])
 
 
 def cleanup(config):

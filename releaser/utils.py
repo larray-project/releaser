@@ -64,7 +64,13 @@ def rmtree(path):
     _rmtree(path, onerror=_remove_readonly)
 
 
+def chdir(path):
+    print("cd", path)
+    os.chdir(path)
+
+
 def call(*args, **kwargs):
+    assert len(args) == 1 and isinstance(args[0], list)
     try:
         res = check_output(*args, stderr=STDOUT, **kwargs)
         if not PY2 and 'universal_newlines' not in kwargs:
@@ -83,7 +89,10 @@ def call(*args, **kwargs):
 
 
 def echocall(*args, **kwargs):
-    print(' '.join(args))
+    assert len(args) == 1 and isinstance(args[0], list)
+    end = kwargs.pop('end', '\n')
+    print(' '.join(args[0]), end=end)
+    sys.stdout.flush()
     return call(*args, **kwargs)
 
 
@@ -110,6 +119,13 @@ def yes(msg, default='y'):
 
 def no(msg, default='n'):
     return not yes(msg, default)
+
+
+def doechocall(description, *args, **kwargs):
+    print(description + '... "', end='')
+    kwargs['end'] = '" '
+    echocall(*args, **kwargs)
+    print('done.')
 
 
 def do(description, func, *args, **kwargs):
