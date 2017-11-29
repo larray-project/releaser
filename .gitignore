@@ -1,6 +1,6 @@
-# IntelliJ project files
-.idea
-*.iml
-out
-gen
 .idea/
+*.egg-info
+*.pyc
+*.pyd
+build/
+dist/
