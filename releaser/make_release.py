@@ -215,8 +215,9 @@ def update_changelog(config):
         with open(fpath, 'w') as f:
             f.writelines(lines)
         with open(fpath, encoding='utf-8-sig') as f:
+            print()
             print('\n'.join(f.read().splitlines()[:20]))
-        if no('Does the full changelog look right?'):
+        if no('Does the changelog look right?'):
             exit(1)
         call(['git', 'commit', '-m', '"update release date in changes.rst"', fpath])
 
