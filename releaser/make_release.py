@@ -201,16 +201,18 @@ def update_changelog(config):
         fpath = join(config['src_documentation'], 'changes.rst')
         with open(fpath) as f:
             lines = f.readlines()
-            title = "Version {}".format(short(release_name))
-            if lines[5] != title + '\n':
-                print("changes.rst not modified (the last release is not {})".format(title))
+            expected_title = "Version {}".format(short(release_name))
+            title = lines[3]
+            if title != expected_title + '\n':
+                print('changes.rst not modified (the version title is "{}" and instead of "{}")'
+                      .format(title, expected_title))
                 return
-            release_date = lines[8]
+            release_date = lines[6]
             if release_date != "In development.\n":
-                print('changes.rst not modified (the last release date is "{}" '
+                print('changes.rst not modified (the version release date is "{}" '
                       'instead of "In development.", was it already released?)'.format(release_date))
                 return
-            lines[8] = "Released on {}.\n".format(date.today().isoformat())
+            lines[6] = "Released on {}.\n".format(date.today().isoformat())
         with open(fpath, 'w') as f:
             f.writelines(lines)
         with open(fpath, encoding='utf-8-sig') as f:
