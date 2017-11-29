@@ -182,7 +182,7 @@ def update_version(config):
     if no('Do the version update changes look right?'):
         exit(1)
     do('Adding', call, ['git', 'add', meta_file, init_file, setup_file])
-    do('Commiting', call, ['git', 'commit', '-m', '"bump to version {}"'.format(version)])
+    do('Commiting', call, ['git', 'commit', '-m', 'bump to version {}'.format(version)])
     print(call(['git', 'log', '-1']))
 
 
@@ -219,7 +219,7 @@ def update_changelog(config):
             print('\n'.join(f.read().splitlines()[:20]))
         if no('Does the changelog look right?'):
             exit(1)
-        call(['git', 'commit', '-m', '"update release date in changes.rst"', fpath])
+        call(['git', 'commit', '-m', 'update release date in changes.rst', fpath])
 
 
 def build_doc(config):
@@ -252,7 +252,7 @@ def tag_release(config):
         return
 
     release_name = config['release_name']
-    call(['git', 'tag', '-a', release_name, '-m', '"tag release {}"'.format(release_name)])
+    call(['git', 'tag', '-a', release_name, '-m', 'tag release {}'.format(release_name)])
 
 
 def push_on_pypi(config):
