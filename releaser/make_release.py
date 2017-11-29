@@ -184,7 +184,6 @@ def update_version(config):
     do('Adding', call, ['git', 'add', meta_file, init_file, setup_file])
     do('Commiting', call, ['git', 'commit', '-m', '"bump to version {}"'.format(version)])
     print(call(['git', 'log', '-1']))
-    do('Pushing to GitHub', call, ['git', 'push', 'origin', config['branch']])
 
 
 def update_changelog(config):
