@@ -69,22 +69,44 @@ def chdir(path):
     os.chdir(path)
 
 
+def force_decode(s):
+    if isinstance(s, str):
+        return s
+    assert isinstance(s, bytes)
+    encodings = ['utf8', 'cp1252']
+    for encoding in encodings:
+        try:
+            return s.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    return s.decode('ascii', 'replace')
+
+
 def call(*args, **kwargs):
     assert len(args) == 1 and isinstance(args[0], list)
     try:
         res = check_output(*args, stderr=STDOUT, **kwargs)
         if not PY2 and 'universal_newlines' not in kwargs:
-            encodings = ['utf8', 'cp1252']
-            for encoding in encodings:
-                try:
-                    return res.decode(encoding)
-                except UnicodeDecodeError:
-                    pass
-            return res.decode('ascii', 'replace')
+            return force_decode(res)
         else:
             return res
     except CalledProcessError as e:
-        print(e.output)
+        print("""
+
+call failed
+===========
+{}
+
+output
+======
+{}""".format(' '.join(args[0]), force_decode(e.output)))
+        raise e
+    except FileNotFoundError as e:
+        print("""
+
+call failed
+===========
+{}""".format(' '.join(args[0])))
         raise e
 
 
