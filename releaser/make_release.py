@@ -137,7 +137,7 @@ def create_archives(config):
     chdir(config['build_dir'])
 
     release_name = config['release_name']
-    create_source_archive(release_name, config['rev'])
+    create_source_archive(config['package_name'], release_name, config['rev'])
 
     chdir(config['tmp_dir'])
 
