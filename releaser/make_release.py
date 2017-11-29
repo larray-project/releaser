@@ -337,7 +337,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         if '-' in release_name:
             raise ValueError("- is not supported anymore")
 
-        release_name = long_release_name(release_name)
+        # release_name = long_release_name(release_name)
 
     rev = git_remote_last_rev(local_repository, 'refs/heads/{}'.format(branch))
     public_release = release_name != 'dev'
