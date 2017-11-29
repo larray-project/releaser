@@ -68,8 +68,15 @@ def call(*args, **kwargs):
     try:
         res = check_output(*args, stderr=STDOUT, **kwargs)
         if not PY2 and 'universal_newlines' not in kwargs:
-            res = res.decode('utf8')
-        return res
+            encodings = ['utf8', 'cp1252']
+            for encoding in encodings:
+                try:
+                    return res.decode(encoding)
+                except UnicodeDecodeError:
+                    pass
+            return res.decode('ascii', 'replace')
+        else:
+            return res
     except CalledProcessError as e:
         print(e.output)
         raise e
