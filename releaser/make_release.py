@@ -11,7 +11,7 @@ from datetime import date
 from os import chdir, makedirs
 from os.path import exists, join
 
-from releaser.utils import (PY2, call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
+from releaser.utils import (call, do, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
                             git_remote_last_rev, replace_lines, release_changes, echocall)
 
 
@@ -179,7 +179,7 @@ def update_version(config):
     # check, commit and push
     print(call(['git', 'status', '-s']))
     print(call(['git', 'diff', meta_file, init_file, setup_file]))
-    if no('Does that last changes look right?'):
+    if no('Do the version update changes look right?'):
         exit(1)
     do('Adding', call, ['git', 'add', meta_file, init_file, setup_file])
     do('Commiting', call, ['git', 'commit', '-m', '"bump to version {}"'.format(version)])
