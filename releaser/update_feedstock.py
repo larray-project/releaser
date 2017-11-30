@@ -43,7 +43,7 @@ def update_version_conda_forge_package(config):
     if no('Does that last changes look right?'):
         exit(1)
     doechocall('Adding', ['git', 'add', meta_file])
-    doechocall('Commiting', ['git', 'commit', '-m', 'bump to version {version}'.format(version=version)])
+    doechocall('Commiting', ['git', 'commit', '-m', 'bump version to {version}'.format(version=version)])
 
 
 def push_conda_forge(config):
