@@ -56,7 +56,7 @@ In development.
 def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None):
     config = {
         'branch': branch,
-        'release_name': release_name+'-dev',
+        'release_name': release_name,
         'package_name': package_name,
         'module_name': module_name,
         'repository': local_repository,
@@ -65,5 +65,6 @@ def add_release(local_repository, package_name, module_name, release_name, branc
         'public_release': True
     }
     update_changelog(config)
+    config['release_name'] += '-dev'
     update_version(config)
     push(config)
