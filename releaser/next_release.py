@@ -19,8 +19,8 @@ def update_changelog(config):
 
         # create "empty" changelog for that release
         changes_dir = join(src_documentation, 'changes')
-        copy(join(changes_dir, 'template.rst.inc'),
-             join(changes_dir, fname))
+        changelog_file = join(changes_dir, fname)
+        copy(join(changes_dir, 'template.rst.inc'), changelog_file)
 
         # include release changelog in changes.rst
         fpath = join(src_documentation, 'changes.rst')
@@ -50,7 +50,7 @@ In development.
             print('\n'.join(f.read().splitlines()[:20]))
         if no('Does the full changelog look right?'):
             exit(1)
-        echocall(['git', 'add', fpath])
+        echocall(['git', 'add', fpath, changelog_file])
 
 
 def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None):
