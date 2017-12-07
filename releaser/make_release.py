@@ -289,7 +289,7 @@ def push(config):
 
     chdir(config['repository'])
     doechocall('Pushing main repository changes to GitHub',
-               ['git', 'push', 'origin', config['branch'], '--follow-tags'])
+               ['git', 'push', 'upstream', config['branch'], '--follow-tags'])
 
 
 def cleanup(config):
