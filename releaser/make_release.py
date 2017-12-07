@@ -10,6 +10,7 @@ import sys
 from datetime import date
 from os import makedirs
 from os.path import exists, join
+from subprocess import check_call
 
 from releaser.utils import (call, do, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
                             git_remote_last_rev, replace_lines, release_changes, echocall, chdir)
@@ -292,6 +293,25 @@ def push(config):
                ['git', 'push', 'upstream', config['branch'], '--follow-tags'])
 
 
+def build_conda_packages(config):
+    if config['conda_recipe_path'] is None:
+        return
+    chdir(config['build_dir'])
+    print('Building conda packages')
+    print('=======================')
+    for python_version in config['python_versions']:
+        # XXX: split build & upload? (--no-anaconda-upload)
+        msg = "Python {}".format(python_version)
+        cmd = ['conda', 'build', '--python', python_version, config['conda_recipe_path']]
+        print()
+        print(msg)
+        print('=' * len(msg))
+        print(' '.join(cmd))
+        print()
+        sys.stdout.flush()
+        check_call(cmd)
+
+
 def cleanup(config):
     chdir(config['tmp_dir'])
     rmtree('build')
@@ -325,6 +345,7 @@ steps_funcs = [
     # >>> need internet from here
     (push, ''),
     (push_on_pypi, 'Pushing on Pypi'),
+    (build_conda_packages, ''),
     # assume the tar archive for the new release exists
     (cleanup, 'Cleaning up'),
 ]
@@ -349,6 +370,9 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp",
                        "{}_release".format(module_name))
 
+    # TODO: make this configurable
+    conda_recipe_path = r'condarecipe/{}'.format(package_name)
+    python_versions = ['2.7', '3.5', '3.6']
     config = {
         'rev': rev,
         'branch': branch,
@@ -359,6 +383,8 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'src_documentation': src_documentation,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
+        'conda_recipe_path': conda_recipe_path,
+        'python_versions': python_versions,
         'public_release': public_release,
     }
     return config
