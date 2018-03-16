@@ -294,6 +294,10 @@ def push(config):
         return
 
     chdir(config['repository'])
+    # rebase on upstream
+    doechocall('rebase on upstream before pushing main repository changes to GitHub',
+               ['git', 'pull', '--rebase', 'upstream', 'master'])
+    # push changes on upstream
     doechocall('Pushing main repository changes to GitHub',
                ['git', 'push', 'upstream', config['branch'], '--follow-tags'])
 
