@@ -48,6 +48,8 @@ def update_version_conda_forge_package(config):
 
 def push_conda_forge(config):
     chdir(config['build_dir'])
+    doechocall('rebase on upstream before pushing main repository changes to GitHub',
+               ['git', 'pull', '--rebase', 'upstream', 'master'])
     doechocall('Pushing changes to GitHub', ['git', 'push', 'origin', config['branch']])
 
 
@@ -67,7 +69,7 @@ steps_funcs = [
 ]
 
 
-def set_config_conda(main_repository, feedstock_repository, module_name, version, branch, tmp_dir):
+def set_config_conda(project_name, package_name, module_name, version, branch, tmp_dir):
     if tmp_dir is None:
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_feedstock".format(module_name))
 
@@ -75,15 +77,16 @@ def set_config_conda(main_repository, feedstock_repository, module_name, version
         'module_name': module_name,
         'branch': branch,
         'version': version,
-        'main_repository': main_repository,
-        'repository': feedstock_repository,
+        'main_repository': 'https://github.com/{}/{}.git'.format(project_name, package_name),
+        'repository': 'https://github.com/{}/{}-feedstock.git'.format(project_name, package_name),
+        'upstream': 'https://github.com/conda-forge/{}-feedstock.git'.format(package_name),
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
     }
     return config
 
 
-def update_feedstock(main_repository, feedstock_repository, module_name, release_name, steps=':', branch='master',
+def update_feedstock(project_name, package_name, module_name, release_name, steps=':', branch='master',
                      tmp_dir=None):
-    config = set_config_conda(main_repository, feedstock_repository, module_name, release_name, branch, tmp_dir)
+    config = set_config_conda(project_name, package_name, module_name, release_name, branch, tmp_dir)
     run_steps(config, steps, steps_funcs)
