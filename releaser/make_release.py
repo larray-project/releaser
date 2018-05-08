@@ -351,6 +351,10 @@ steps_funcs = [
 ]
 
 
+def insert_step_func(index, func, msg=''):
+    steps_funcs.insert(index, (func, msg))
+
+
 def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir):
     if release_name != 'dev':
         if 'pre' in release_name:
