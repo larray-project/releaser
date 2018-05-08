@@ -108,6 +108,11 @@ def clone_repository(config):
     # because it needs more complicated path handling that the 2 push approach.
     doechocall('Cloning repository', ['git', 'clone', '-b', config['branch'], config['repository'], 'build'])
 
+    # set upstream
+    chdir(config['build_dir'])
+    doechocall('setting upstream to {}.git'.format(config['upstream']),
+               ['git', 'remote', 'add', 'upstream', '{}.git'.format(config['upstream'])])
+
 
 def check_clone(config):
     chdir(config['build_dir'])
@@ -289,6 +294,10 @@ def push(config):
         return
 
     chdir(config['repository'])
+    # rebase on upstream
+    doechocall('rebase on upstream before pushing main repository changes to GitHub',
+               ['git', 'pull', '--rebase', 'upstream', 'master'])
+    # push changes on upstream
     doechocall('Pushing main repository changes to GitHub',
                ['git', 'push', 'upstream', config['branch'], '--follow-tags'])
 
@@ -351,7 +360,8 @@ steps_funcs = [
 ]
 
 
-def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir):
+def set_config(local_repository, project_name, package_name, module_name, release_name, branch, src_documentation,
+               tmp_dir):
     if release_name != 'dev':
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
@@ -380,6 +390,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'package_name': package_name,
         'module_name': module_name,
         'repository': local_repository,
+        'upstream' : 'https://github.com/{}/{}.git'.format(project_name, package_name),
         'src_documentation': src_documentation,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
@@ -409,7 +420,8 @@ def run_steps(config, steps, steps_funcs):
             step_func(config)
 
 
-def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',
-                 src_documentation=None, tmp_dir=None):
-    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir)
+def make_release(local_repository, project_name, package_name, module_name, release_name='dev', steps=':',
+                 branch='master', src_documentation=None, tmp_dir=None):
+    config = set_config(local_repository, project_name, package_name, module_name, release_name, branch,
+                        src_documentation, tmp_dir)
     run_steps(config, steps, steps_funcs)
