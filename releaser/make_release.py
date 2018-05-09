@@ -7,9 +7,10 @@
 from __future__ import print_function, unicode_literals
 
 import sys
+import json
 from datetime import date
 from os import makedirs
-from os.path import exists, join
+from os.path import exists, join, isfile
 from subprocess import check_call
 
 from releaser.utils import (call, do, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
@@ -167,6 +168,18 @@ def update_version(config):
     changes = [('version: ', "  version: {}".format(version)),
                ('git_tag: ', "  git_tag: {}".format(version))]
     replace_lines(meta_file, changes)
+
+    # larray-editor.json (for larray-editor project)
+    menuinst_file = join('condarecipe', package_name, 'larray-editor.json')
+    if isfile(menuinst_file):
+        with open(menuinst_file) as mf:
+            data = json.load(mf)
+        menu_items = data['menu_items']
+        for i, menu_item in enumerate(menu_items[:]):
+            if 'webbrowser' in menu_item:
+                menu_items[i]['webbrowser'] = 'http://larray.readthedocs.io/en/{}'.format(version)
+        with open(menuinst_file, mode='w') as mf:
+            json.dump(data, mf, indent=4)
 
     # __init__.py
     init_file = join(src_code, '__init__.py')
