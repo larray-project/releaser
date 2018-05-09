@@ -351,6 +351,17 @@ steps_funcs = [
 ]
 
 
+def insert_step_func(func, msg='', index=None, before=None, after=None):
+    if sum([index is not None, before is not None, after is not None]) != 1:
+        raise ValueError("You must choose between arguments 'index', 'before' and 'after'")
+    func_names = [f.__name__ for f, desc in steps_funcs]
+    if before is not None:
+        index = func_names.index(before)
+    elif after is not None:
+        index = func_names.index(after) + 1
+    steps_funcs.insert(index, (func, msg))
+
+
 def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir):
     if release_name != 'dev':
         if 'pre' in release_name:
