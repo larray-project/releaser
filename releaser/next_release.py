@@ -67,4 +67,6 @@ def add_release(local_repository, package_name, module_name, release_name, branc
     update_changelog(config)
     config['release_name'] += '-dev'
     update_version(config)
-    push(config)
+    # we should NOT push by default as next_release can be called when the working copy is on a branch (when we want to
+    # add release notes for features which are not targeted for the current release)
+    # push(config)
