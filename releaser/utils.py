@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # coding=utf-8
 from __future__ import print_function, unicode_literals
 
@@ -9,9 +8,8 @@ import os
 import re
 import stat
 import zipfile
-import subprocess
 from os.path import join
-from shutil import copytree, copy2, rmtree as _rmtree
+from shutil import rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 
