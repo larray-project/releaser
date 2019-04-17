@@ -352,7 +352,7 @@ steps_funcs = [
 
 
 def insert_step_func(func, msg='', index=None, before=None, after=None):
-    if sum([index is not None, before is not None, after is not None]) != 1:
+    if sum([index is not None, before is not None, after is not None]) != 2:
         raise ValueError("You must choose between arguments 'index', 'before' and 'after'")
     func_names = [f.__name__ for f, desc in steps_funcs]
     if before is not None:
