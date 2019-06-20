@@ -211,7 +211,7 @@ def pretag_pos(release_name):
     """
     # 'a' needs to be searched for after 'beta'
     for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
-        match = re.search(tag + '\d+', release_name)
+        match = re.search(tag + r'\d+', release_name)
         if match is not None:
             return match.start()
     return None
