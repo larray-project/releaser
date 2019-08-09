@@ -297,19 +297,15 @@ def build_conda_packages(config):
     if config['conda_recipe_path'] is None:
         return
     chdir(config['build_dir'])
+    print()
     print('Building conda packages')
     print('=======================')
-    for python_version in config['python_versions']:
-        # XXX: split build & upload? (--no-anaconda-upload)
-        msg = "Python {}".format(python_version)
-        cmd = ['conda', 'build', '--python', python_version, config['conda_recipe_path']]
-        print()
-        print(msg)
-        print('=' * len(msg))
-        print(' '.join(cmd))
-        print()
-        sys.stdout.flush()
-        check_call(cmd)
+    # XXX: split build & upload? (--no-anaconda-upload)
+    cmd = ['conda', 'build', config['conda_recipe_path']]
+    print(' '.join(cmd))
+    print()
+    sys.stdout.flush()
+    check_call(cmd)
 
 
 def cleanup(config):
@@ -383,7 +379,6 @@ def set_config(local_repository, package_name, module_name, release_name, branch
 
     # TODO: make this configurable
     conda_recipe_path = r'condarecipe/{}'.format(package_name)
-    python_versions = ['2.7', '3.5', '3.6']
     config = {
         'rev': rev,
         'branch': branch,
@@ -395,7 +390,6 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
         'conda_recipe_path': conda_recipe_path,
-        'python_versions': python_versions,
         'public_release': public_release,
     }
     return config
