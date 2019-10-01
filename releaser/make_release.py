@@ -301,7 +301,11 @@ def build_conda_packages(config):
     print('Building conda packages')
     print('=======================')
     # XXX: split build & upload? (--no-anaconda-upload)
-    cmd = ['conda', 'build', config['conda_recipe_path']]
+    cmd = ['conda', 'build']
+    if config['conda_build_args']:
+        for arg_name, arg_value in config['conda_build_args'].items():
+            cmd += [arg_name, arg_value]
+    cmd += [config['conda_recipe_path']]
     print(' '.join(cmd))
     print()
     sys.stdout.flush()
@@ -358,7 +362,11 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     steps_funcs.insert(index, (func, msg))
 
 
-def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir):
+def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir,
+               conda_build_args):
+    if conda_build_args is not None and not isinstance(conda_build_args, dict):
+        raise TypeError("'conda_build_args' argument must be None or a dict")
+
     if release_name != 'dev':
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
@@ -389,6 +397,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'src_documentation': src_documentation,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
+        'conda_build_args': conda_build_args,
         'conda_recipe_path': conda_recipe_path,
         'public_release': public_release,
     }
@@ -415,6 +424,7 @@ def run_steps(config, steps, steps_funcs):
 
 
 def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',
-                 src_documentation=None, tmp_dir=None):
-    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir)
+                 src_documentation=None, tmp_dir=None, conda_build_args=None):
+    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
+                        tmp_dir, conda_build_args)
     run_steps(config, steps, steps_funcs)
