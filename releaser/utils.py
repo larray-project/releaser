@@ -133,12 +133,6 @@ def doechocall(description, *args, **kwargs):
     print('done.')
 
 
-def do(description, func, *args, **kwargs):
-    print(description + '...', end=' ')
-    func(*args, **kwargs)
-    print("done.")
-
-
 def allfiles(pattern, path='.'):
     """
     like glob.glob(pattern) but also include files in subdirectories
