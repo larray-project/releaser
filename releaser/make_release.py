@@ -9,7 +9,7 @@ from os import makedirs
 from os.path import exists, join
 from subprocess import check_call
 
-from releaser.utils import (call, do, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
+from releaser.utils import (call, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
                             git_remote_last_rev, replace_lines, release_changes, echocall, chdir)
 
 
@@ -415,7 +415,9 @@ def run_steps(config, steps, steps_funcs):
 
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:
-            do(step_desc, step_func, config)
+            print(step_desc + '...', end=' ')
+            step_func(config)
+            print("done.")
         else:
             step_func(config)
 
