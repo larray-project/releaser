@@ -50,7 +50,7 @@ def update_changelog(src_documentation, build_dir, release_name,
     echocall(['git', 'add', fpath, changelog_file])
 
 
-def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None,
+def add_release(local_repository, package_name, module_name, release_name, src_documentation=None,
                 changelog_index_template=DEFAULT_CHANGELOG_INDEX_TEMPLATE):
     update_changelog(src_documentation, build_dir=local_repository, release_name=release_name,
                      changelog_index_template=changelog_index_template)
