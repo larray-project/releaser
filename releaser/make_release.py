@@ -18,7 +18,7 @@ from releaser.utils import (call, doechocall, yes, no, zip_unpack, rmtree, branc
 # ------------------------- #
 
 def create_source_archive(package_name, release_name, rev):
-    archive_name = rf'..\{package_name}-{release_name}-src.zip'
+    archive_name = f'..\\{package_name}-{release_name}-src.zip'
     echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
@@ -47,11 +47,9 @@ def check_bundle_archives(package_name, release_name):
 # steps #
 # ----- #
 
-def check_local_repo(config):
+def check_local_repo(repository, branch, release_name, rev, **extra_kwargs):
     # releasing from the local clone has the advantage we can prepare the
     # release offline and only push and upload it when we get back online
-    repository = config['repository']
-    branch = config['branch']
     s = f"Using local repository at: {repository} !"
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
@@ -59,7 +57,7 @@ def check_local_repo(config):
     lines = status.splitlines()
     statusline, lines = lines[0], lines[1:]
     curbranch = branchname(statusline)
-    if curbranch != config['branch']:
+    if curbranch != branch:
         print(f"{branch} is not the current branch ({curbranch}). "
               f"Please use 'git checkout {branch}'.")
         exit(1)
@@ -81,19 +79,18 @@ def check_local_repo(config):
     else:
         print()
 
-    if no(f"Release version {config['release_name']} ({config['rev']})?"):
+    if no(f"Release version {release_name} ({rev})?"):
         exit(1)
 
 
-def create_tmp_directory(config):
-    tmp_dir = config['tmp_dir']
+def create_tmp_directory(tmp_dir, **extra_kwargs):
     if exists(tmp_dir):
         rmtree(tmp_dir)
     makedirs(tmp_dir)
 
 
-def clone_repository(config):
-    chdir(config['tmp_dir'])
+def clone_repository(tmp_dir, branch, repository, **extra_kwargs):
+    chdir(tmp_dir)
 
     # make a temporary clone in /tmp. The goal is to make sure we do not include extra/unversioned files. For the -src
     # archive, I don't think there is a risk given that we do it via git, but the risk is there for the bundles
@@ -103,11 +100,11 @@ def clone_repository(config):
     # by updating the temporary clone then push twice: first from the temporary clone to the "working copy clone" (eg
     # ~/devel/project) then to GitHub from there. The alternative to modify the "working copy clone" directly is worse
     # because it needs more complicated path handling that the 2 push approach.
-    doechocall('Cloning repository', ['git', 'clone', '-b', config['branch'], config['repository'], 'build'])
+    doechocall('Cloning repository', ['git', 'clone', '-b', branch, repository, 'build'])
 
 
-def check_clone(config):
-    chdir(config['build_dir'])
+def check_clone(build_dir, public_release, src_documentation, release_name, **extra_kwargs):
+    chdir(build_dir)
 
     # check last commit
     print()
@@ -117,28 +114,27 @@ def check_clone(config):
     if no('Does that last commit look right?'):
         exit(1)
 
-    if config['public_release']:
+    if public_release:
         # check release changes
-        print(release_changes(config))
+        print(release_changes(src_documentation, release_name, build_dir))
         if no('Does the release changelog look right?'):
             exit(1)
 
 
-def build_exe(config):
+def build_exe(**config):
     pass
 
 
-def test_executables(config):
+def test_executables(**config):
     pass
 
 
-def create_archives(config):
-    chdir(config['build_dir'])
+def create_archives(build_dir, release_name, package_name, rev, tmp_dir, **extra_kwargs):
+    chdir(build_dir)
 
-    release_name = config['release_name']
-    create_source_archive(config['package_name'], release_name, config['rev'])
+    create_source_archive(package_name, release_name, rev)
 
-    chdir(config['tmp_dir'])
+    chdir(tmp_dir)
 
     # copy_release(release_name)
     # create_bundle_archives(release_name)
@@ -152,13 +148,10 @@ def run_tests():
     echocall('pytest')
 
 
-def update_version(config):
-    chdir(config['build_dir'])
+def update_version(build_dir, release_name, package_name, module_name, **extra_kwargs):
+    chdir(build_dir)
 
-    version = short(config['release_name'])
-    package_name = config['package_name']
-    src_code = config['module_name']
-
+    version = short(release_name)
     # meta.yaml
     meta_file = join('condarecipe', package_name, 'meta.yaml')
     changes = [('version: ', f"  version: {version}"),
@@ -166,7 +159,7 @@ def update_version(config):
     replace_lines(meta_file, changes)
 
     # __init__.py
-    init_file = join(src_code, '__init__.py')
+    init_file = join(module_name, '__init__.py')
     changes = [('__version__ =', f"__version__ = '{version}'")]
     replace_lines(init_file, changes)
 
@@ -185,18 +178,17 @@ def update_version(config):
     print(echocall(['git', 'log', '-1']))
 
 
-def update_changelog(config):
+def update_changelog(src_documentation, build_dir, public_release, release_name, **extra_kwargs):
     """
     Update release date in changes.rst
     """
-    if config['src_documentation'] is not None:
-        chdir(config['build_dir'])
+    if src_documentation is not None:
+        chdir(build_dir)
 
-        if not config['public_release']:
+        if not public_release:
             return
 
-        release_name = config['release_name']
-        fpath = join(config['src_documentation'], 'changes.rst')
+        fpath = join(src_documentation, 'changes.rst')
         with open(fpath) as f:
             lines = f.readlines()
             expected_title = f"Version {short(release_name)}"
@@ -220,8 +212,8 @@ def update_changelog(config):
         echocall(['git', 'commit', '-m', f'update release date for {short(release_name)}', fpath])
 
 
-def build_doc(config):
-    chdir(config['build_dir'])
+def build_doc(build_dir, **extra_kwargs):
+    chdir(build_dir)
     chdir('doc')
     if sys.platform == "win32":
         echocall('buildall.bat')
@@ -229,8 +221,8 @@ def build_doc(config):
         echocall('buildall.sh')
 
 
-def final_confirmation(config):
-    if not config['public_release']:
+def final_confirmation(public_release, **extra_kwargs):
+    if not public_release:
         return
 
     msg = """Is the release looking good? If so, the tag will be created and pushed, everything will be uploaded to 
@@ -243,20 +235,19 @@ the production server. Stuff to watch out for:
         exit(1)
 
 
-def tag_release(config):
-    chdir(config['build_dir'])
+def tag_release(build_dir, public_release, release_name, **extra_kwargs):
+    chdir(build_dir)
 
-    if not config['public_release']:
+    if not public_release:
         return
 
-    release_name = config['release_name']
     echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
-def push_on_pypi(config):
-    chdir(config['build_dir'])
+def push_on_pypi(build_dir, public_release, **extra_kwargs):
+    chdir(build_dir)
 
-    if not config['public_release']:
+    if not public_release:
         return
 
     cmd = ['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal', 'upload', '-r', 'pypi']
@@ -269,49 +260,48 @@ will now be executed.
     echocall(cmd)
 
 
-def pull(config):
-    if not config['public_release']:
+def pull(repository, public_release, build_dir, branch, **extra_kwargs):
+    if not public_release:
         return
 
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
-    repository = config['repository']
     chdir(repository)
     doechocall(f'Pulling changes in {repository}',
-               ['git', 'pull', '--ff-only', '--tags', config['build_dir'], config['branch']])
+               ['git', 'pull', '--ff-only', '--tags', build_dir, branch])
 
 
-def push(config):
-    if not config['public_release']:
+def push(repository, public_release, branch, **extra_kwargs):
+    if not public_release:
         return
 
-    chdir(config['repository'])
+    chdir(repository)
     doechocall('Pushing main repository changes to GitHub',
-               ['git', 'push', 'upstream', config['branch'], '--follow-tags'])
+               ['git', 'push', 'upstream', branch, '--follow-tags'])
 
 
-def build_conda_packages(config):
-    if config['conda_recipe_path'] is None:
+def build_conda_packages(conda_recipe_path, build_dir, conda_build_args, **extra_kwargs):
+    if conda_recipe_path is None:
         return
-    chdir(config['build_dir'])
+    chdir(build_dir)
     print()
     print('Building conda packages')
     print('=======================')
     # XXX: split build & upload? (--no-anaconda-upload)
     cmd = ['conda', 'build']
-    if config['conda_build_args']:
-        for arg_name, arg_value in config['conda_build_args'].items():
+    if conda_build_args:
+        for arg_name, arg_value in conda_build_args.items():
             cmd += [arg_name, arg_value]
-    cmd += [config['conda_recipe_path']]
+    cmd += [conda_recipe_path]
     print(' '.join(cmd))
-    print()
-    sys.stdout.flush()
+    print(flush=True)
     check_call(cmd)
 
 
-def cleanup(config):
-    chdir(config['tmp_dir'])
+def cleanup(tmp_dir, **extra_kwargs):
+    chdir(tmp_dir)
     rmtree('build')
+
 
 # ------------ #
 # end of steps #
@@ -416,10 +406,10 @@ def run_steps(config, steps, steps_funcs):
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:
             print(step_desc + '...', end=' ')
-            step_func(config)
+            step_func(**config)
             print("done.")
         else:
-            step_func(config)
+            step_func(**config)
 
 
 def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',

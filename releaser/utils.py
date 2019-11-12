@@ -237,11 +237,11 @@ def relname2fname(release_name):
     return fr"version_{short_version.replace('.', '_')}.rst.inc"
 
 
-def release_changes(config):
-    if config['src_documentation'] is not None:
-        directory = join(config['src_documentation'], "changes")
-        fname = relname2fname(config['release_name'])
-        with open(os.path.join(config['build_dir'], directory, fname), encoding='utf-8-sig') as f:
+def release_changes(src_documentation, release_name, build_dir):
+    if src_documentation is not None:
+        directory = join(src_documentation, "changes")
+        fname = relname2fname(release_name)
+        with open(os.path.join(build_dir, directory, fname), encoding='utf-8-sig') as f:
             return f.read()
 
 

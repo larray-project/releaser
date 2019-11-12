@@ -16,12 +16,11 @@ from releaser.make_release import create_tmp_directory, clone_repository, cleanu
 # steps #
 # ----- #
 
-def update_version_conda_forge_package(config):
-    chdir(config['build_dir'])
+def update_version_conda_forge_package(build_dir, version, main_repository, **extra_kwargs):
+    chdir(build_dir)
 
     # compute sha256 of archive of current release
-    version = config['version']
-    url = config['main_repository'] + f'/archive/{version}.tar.gz'
+    url = main_repository + f'/archive/{version}.tar.gz'
     print(f'Computing SHA256 from archive {url}', end=' ')
     with request.urlopen(url) as response:
         sha256 = hashlib.sha256(response.read()).hexdigest()
@@ -43,9 +42,9 @@ def update_version_conda_forge_package(config):
     doechocall('Commiting', ['git', 'commit', '-m', f'bump version to {version}'])
 
 
-def push_conda_forge(config):
-    chdir(config['build_dir'])
-    doechocall('Pushing changes to GitHub', ['git', 'push', 'origin', config['branch']])
+def push_conda_forge(build_dir, branch, **extra_kwargs):
+    chdir(build_dir)
+    doechocall('Pushing changes to GitHub', ['git', 'push', 'origin', branch])
 
 
 # ------------ #
