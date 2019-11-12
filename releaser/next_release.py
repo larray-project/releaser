@@ -21,15 +21,14 @@ In development.
 
 def update_changelog(src_documentation, build_dir, release_name,
                      changelog_index_template=DEFAULT_CHANGELOG_INDEX_TEMPLATE):
-    if src_documentation is not None:
-        chdir(build_dir)
+    chdir(build_dir)
 
-        fname = relname2fname(release_name)
+    fname = relname2fname(release_name)
 
-        # create "empty" changelog for that release
-        changes_dir = join(src_documentation, 'changes')
-        changelog_file = join(changes_dir, fname)
-        copy(join(changes_dir, 'template.rst.inc'), changelog_file)
+    # create "empty" changelog for that release
+    changes_dir = join(src_documentation, 'changes')
+    changelog_file = join(changes_dir, fname)
+    copy(join(changes_dir, 'template.rst.inc'), changelog_file)
 
     # include release changelog in changes.rst
     fpath = join(src_documentation, 'changes.rst')
@@ -39,7 +38,9 @@ def update_changelog(src_documentation, build_dir, release_name,
         if lines[3] == title + '\n':
             print(f"changes.rst not modified (it already contains {title})")
             return
-        this_version = changelog_index_template.format(title=title, underline="=" * len(title), fname=fname)
+        this_version = changelog_index_template.format(title=title,
+                                                       underline="=" * len(title),
+                                                       fname= fname)
         lines[3:3] = this_version.splitlines(True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
@@ -52,11 +53,11 @@ def update_changelog(src_documentation, build_dir, release_name,
 
 def add_release(local_repository, package_name, module_name, release_name, src_documentation=None,
                 changelog_index_template=DEFAULT_CHANGELOG_INDEX_TEMPLATE):
-    update_changelog(src_documentation, build_dir=local_repository, release_name=release_name,
-                     changelog_index_template=changelog_index_template)
-    release_name += '-dev'
+    if src_documentation is not None:
+        update_changelog(src_documentation, build_dir=local_repository, release_name=release_name,
+                         changelog_index_template=changelog_index_template)
 
-    update_version(build_dir=local_repository, release_name=release_name, package_name=package_name,
+    update_version(build_dir=local_repository, release_name=release_name + '-dev', package_name=package_name,
                    module_name=module_name)
     # we should NOT push by default as next_release can be called when the working copy is on a branch (when we want to
     # add release notes for features which are not targeted for the current release)
