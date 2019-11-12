@@ -9,43 +9,13 @@ from os import makedirs
 from os.path import exists, join
 from subprocess import check_call
 
-from releaser.utils import (call, doechocall, yes, no, zip_unpack, rmtree, branchname, short, long_release_name,
+from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short,
                             git_remote_last_rev, replace_lines, release_changes, echocall, chdir)
-
-
-# ------------------------- #
-# specific helper functions #
-# ------------------------- #
-
-def create_source_archive(package_name, release_name, rev):
-    archive_name = f'..\\{package_name}-{release_name}-src.zip'
-    echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
-
-
-def copy_release(release_name):
-    pass
-
-
-def create_bundle_archives(release_name):
-    pass
-
-
-def check_bundle_archives(package_name, release_name):
-    """
-    checks the bundles unpack correctly
-    """
-    makedirs('test')
-    zip_unpack(f'{package_name}-{release_name}-src.zip', r'test\src')
-    rmtree('test')
-
-# -------------------------------- #
-# end of specific helper functions #
-# -------------------------------- #
-
 
 # ----- #
 # steps #
 # ----- #
+
 
 def check_local_repo(repository, branch, release_name, rev, **extra_kwargs):
     # releasing from the local clone has the advantage we can prepare the
@@ -121,31 +91,11 @@ def check_clone(build_dir, public_release, src_documentation, release_name, **ex
             exit(1)
 
 
-def build_exe(**config):
-    pass
-
-
-def test_executables(**config):
-    pass
-
-
-def create_archives(build_dir, release_name, package_name, rev, tmp_dir, **extra_kwargs):
+def create_source_archive(build_dir, package_name, release_name, rev, **extra_kwargs):
     chdir(build_dir)
 
-    create_source_archive(package_name, release_name, rev)
-
-    chdir(tmp_dir)
-
-    # copy_release(release_name)
-    # create_bundle_archives(release_name)
-    # check_bundle_archives(release_name)
-
-
-def run_tests():
-    """
-    assumes to be in build
-    """
-    echocall('pytest')
+    archive_name = f'..\\{package_name}-{release_name}-src.zip'
+    echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
 def update_version(build_dir, release_name, package_name, module_name, **extra_kwargs):
@@ -236,19 +186,19 @@ the production server. Stuff to watch out for:
 
 
 def tag_release(build_dir, public_release, release_name, **extra_kwargs):
-    chdir(build_dir)
-
     if not public_release:
         return
+
+    chdir(build_dir)
 
     echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
 def push_on_pypi(build_dir, public_release, **extra_kwargs):
-    chdir(build_dir)
-
     if not public_release:
         return
+
+    chdir(build_dir)
 
     cmd = ['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal', 'upload', '-r', 'pypi']
     msg = f"""Ready to push on pypi? If so, command line 
@@ -313,10 +263,8 @@ steps_funcs = [
     (clone_repository, ''),
     (check_clone, ''),
     (update_version, ''),
-    (build_exe, 'Building executables'),
-    (test_executables, 'Testing executables'),
     (update_changelog, 'Updating changelog'),
-    (create_archives, 'Creating archives'),
+    # (create_source_archive, 'Creating source archive'),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     # We used to push from /tmp to the local repository but you cannot push
