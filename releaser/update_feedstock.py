@@ -1,11 +1,8 @@
 #!/usr/bin/python
-# coding=utf-8
 # Release script
 # Licence: GPLv3
 # Requires:
 # * git
-from __future__ import print_function, unicode_literals
-
 import sys
 import hashlib
 import urllib.request as request
@@ -24,8 +21,8 @@ def update_version_conda_forge_package(config):
 
     # compute sha256 of archive of current release
     version = config['version']
-    url = config['main_repository'] + '/archive/{version}.tar.gz'.format(version=version)
-    print('Computing SHA256 from archive {url}'.format(url=url), end=' ')
+    url = config['main_repository'] + f'/archive/{version}.tar.gz'
+    print(f'Computing SHA256 from archive {url}', end=' ')
     with request.urlopen(url) as response:
         sha256 = hashlib.sha256(response.read()).hexdigest()
         print('done.')
@@ -33,8 +30,8 @@ def update_version_conda_forge_package(config):
 
     # set version and sha256 in meta.yml file
     meta_file = r'recipe\meta.yaml'
-    changes = [('set version', '{{% set version = "{version}" %}}'.format(version=version)),
-               ('set sha256', '{{% set sha256 = "{sha256}" %}}'.format(sha256=sha256))]
+    changes = [('set version', f'{{% set version = "{version}" %}}'),
+               ('set sha256', f'{{% set sha256 = "{sha256}" %}}')]
     replace_lines(meta_file, changes)
 
     # add, commit and push
@@ -43,7 +40,7 @@ def update_version_conda_forge_package(config):
     if no('Does that last changes look right?'):
         exit(1)
     doechocall('Adding', ['git', 'add', meta_file])
-    doechocall('Commiting', ['git', 'commit', '-m', 'bump version to {version}'.format(version=version)])
+    doechocall('Commiting', ['git', 'commit', '-m', f'bump version to {version}'])
 
 
 def push_conda_forge(config):
