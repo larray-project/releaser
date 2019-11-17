@@ -111,6 +111,7 @@ def branchname(statusline):
 
 
 def yes(msg, default='y'):
+    """returns True if the user answers y(es) (which is the default answer)"""
     y = "Y" if default == "y" else "y"
     n = "N" if default == "n" else "n"
     choices = f' ({y}/{n}) '
@@ -123,6 +124,7 @@ def yes(msg, default='y'):
 
 
 def no(msg, default='n'):
+    """returns True if the user answers n(o) (which is the default answer)"""
     return not yes(msg, default)
 
 
