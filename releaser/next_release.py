@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# encoding: utf-8
 # script to start a new release cycle
 # Licence: GPLv3
 from os.path import join
@@ -36,9 +35,9 @@ In development.
 
         with open(fpath) as f:
             lines = f.readlines()
-            title = "Version {}".format(short(release_name))
+            title = f"Version {short(release_name)}"
             if lines[3] == title + '\n':
-                print("changes.rst not modified (it already contains {})".format(title))
+                print(f"changes.rst not modified (it already contains {title})")
                 return
             this_version = changelog_index_template.format(title=title,
                                                            underline="=" * len(title),

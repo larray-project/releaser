@@ -1,6 +1,3 @@
-# coding=utf-8
-from __future__ import print_function, unicode_literals
-
 import sys
 import errno
 import fnmatch
@@ -11,19 +8,6 @@ import zipfile
 from os.path import join
 from shutil import rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
-
-
-PY2 = sys.version_info[0] < 3
-
-try:
-    input = raw_input
-except NameError:
-    pass
-
-if PY2:
-    import io
-    # add support for encoding. Slow on Python2, but that is not a problem given what we do with it.
-    open = io.open
 
 
 # ------------- #
@@ -38,13 +22,13 @@ def size2str(value):
         if value > 1024.0:
             value /= 1024.0
             unit = "Mb"
-        return "{:.2f} {}".format(value, unit)
+        return f"{value:.2f} {unit}"
     else:
-        return "{:d} {}".format(value, unit)
+        return f"{value:d} {unit}"
 
 
 def generate(fname, **kwargs):
-    with open('{}.tmpl'.format(fname)) as in_f, open(fname, 'w') as out_f:
+    with open(f'{fname}.tmpl') as in_f, open(fname, 'w') as out_f:
         out_f.write(in_f.read().format(**kwargs))
 
 
@@ -55,7 +39,7 @@ def _remove_readonly(function, path, excinfo):
         # retry removing
         function(path)
     else:
-        raise Exception("Cannot remove {}".format(path))
+        raise Exception(f"Cannot remove {path}")
 
 
 def rmtree(path):
@@ -84,27 +68,27 @@ def call(*args, **kwargs):
     assert len(args) == 1 and isinstance(args[0], list)
     try:
         res = check_output(*args, stderr=STDOUT, **kwargs)
-        if not PY2 and 'universal_newlines' not in kwargs:
+        if 'universal_newlines' not in kwargs:
             return force_decode(res)
         else:
             return res
     except CalledProcessError as e:
-        print("""
+        print(f"""
 
 call failed
 ===========
-{}
+{' '.join(args[0])}
 
 output
 ======
-{}""".format(' '.join(args[0]), force_decode(e.output)))
+{force_decode(e.output)}""")
         raise e
     except FileNotFoundError as e:
-        print("""
+        print(f"""
 
 call failed
 ===========
-{}""".format(' '.join(args[0])))
+{' '.join(args[0])}""")
         raise e
 
 
@@ -127,8 +111,9 @@ def branchname(statusline):
 
 
 def yes(msg, default='y'):
-    choices = ' ({}/{}) '.format(*tuple(c.capitalize() if c == default else c
-                                        for c in ('y', 'n')))
+    y = "Y" if default == "y" else "y"
+    n = "N" if default == "n" else "n"
+    choices = f' ({y}/{n}) '
     answer = None
     while answer not in ('', 'y', 'n'):
         if answer is not None:
@@ -193,7 +178,7 @@ def long_release_name(release_name):
     dotcount = release_name.count('.')
     if dotcount >= 2:
         return release_name
-    assert dotcount == 1, "{} contains {} dots".format(release_name, dotcount)
+    assert dotcount == 1, f"{release_name} contains {dotcount} dots"
     pos = pretag_pos(release_name)
     if pos is not None:
         return release_name[:pos] + '.0' + release_name[pos:]
@@ -255,7 +240,7 @@ def isprerelease(release_name):
 
 def relname2fname(release_name):
     short_version = short(strip_pretags(release_name))
-    return r"version_{}.rst.inc".format(short_version.replace('.', '_'))
+    return fr"version_{short_version.replace('.', '_')}.rst.inc"
 
 
 def release_changes(config):

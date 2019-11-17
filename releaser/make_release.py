@@ -1,11 +1,8 @@
 #!/usr/bin/python
-# coding=utf-8
 # Release script
 # Licence: GPLv3
 # Requires:
 # * git
-from __future__ import print_function, unicode_literals
-
 import sys
 from datetime import date
 from os import makedirs
@@ -21,7 +18,7 @@ from releaser.utils import (call, do, doechocall, yes, no, zip_unpack, rmtree, b
 # ------------------------- #
 
 def create_source_archive(package_name, release_name, rev):
-    archive_name = r'..\{}-{}-src.zip'.format(package_name, release_name)
+    archive_name = rf'..\{package_name}-{release_name}-src.zip'
     echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
@@ -38,7 +35,7 @@ def check_bundle_archives(package_name, release_name):
     checks the bundles unpack correctly
     """
     makedirs('test')
-    zip_unpack('{}-{}-src.zip'.format(package_name, release_name), r'test\src')
+    zip_unpack(f'{package_name}-{release_name}-src.zip', r'test\src')
     rmtree('test')
 
 # -------------------------------- #
@@ -53,7 +50,9 @@ def check_bundle_archives(package_name, release_name):
 def check_local_repo(config):
     # releasing from the local clone has the advantage we can prepare the
     # release offline and only push and upload it when we get back online
-    s = "Using local repository at: {repository} !".format(**config)
+    repository = config['repository']
+    branch = config['branch']
+    s = f"Using local repository at: {repository} !"
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
     status = call(['git', 'status', '-s', '-b'])
@@ -61,30 +60,28 @@ def check_local_repo(config):
     statusline, lines = lines[0], lines[1:]
     curbranch = branchname(statusline)
     if curbranch != config['branch']:
-        print("{branch} is not the current branch ({curbranch}). "
-              "Please use 'git checkout {branch}'.".format(**config, curbranch=curbranch))
+        print(f"{branch} is not the current branch ({curbranch}). "
+              f"Please use 'git checkout {branch}'.")
         exit(1)
 
     if lines:
         uncommited = sum(1 for line in lines if line[1] in 'MDAU')
         untracked = sum(1 for line in lines if line.startswith('??'))
-        print('Warning: there are {:d} files with uncommitted changes and '
-              '{:d} untracked files:'.format(uncommited, untracked))
+        print(f'Warning: there are {uncommited:d} files with uncommitted changes and {untracked:d} untracked files:')
         print('\n'.join(lines))
         if no('Do you want to continue?'):
             exit(1)
 
-    ahead = call(['git', 'log', '--format=format:%H', 'origin/{branch}..{branch}'.format(**config)])
+    ahead = call(['git', 'log', '--format=format:%H', f'origin/{branch}..{branch}'])
     num_ahead = len(ahead.splitlines())
-    print("Branch '{branch}' is {num_ahead:d} commits ahead of 'origin/{branch}'"
-          .format(**config, num_ahead=num_ahead), end='')
+    print(f"Branch '{branch}' is {num_ahead:d} commits ahead of 'origin/{branch}'", end='')
     if num_ahead:
         if yes(', do you want to push?'):
             doechocall('Pushing changes', ['git', 'push'])
     else:
         print()
 
-    if no('Release version {release_name} ({rev})?'.format(**config)):
+    if no(f"Release version {config['release_name']} ({config['rev']})?"):
         exit(1)
 
 
@@ -164,18 +161,18 @@ def update_version(config):
 
     # meta.yaml
     meta_file = join('condarecipe', package_name, 'meta.yaml')
-    changes = [('version: ', "  version: {}".format(version)),
-               ('git_tag: ', "  git_tag: {}".format(version))]
+    changes = [('version: ', f"  version: {version}"),
+               ('git_tag: ', f"  git_tag: {version}")]
     replace_lines(meta_file, changes)
 
     # __init__.py
     init_file = join(src_code, '__init__.py')
-    changes = [('__version__ =', "__version__ = '{}'".format(version))]
+    changes = [('__version__ =', f"__version__ = '{version}'")]
     replace_lines(init_file, changes)
 
     # setup.py
     setup_file = 'setup.py'
-    changes = [('VERSION =', "VERSION = '{}'".format(version))]
+    changes = [('VERSION =', f"VERSION = '{version}'")]
     replace_lines(setup_file, changes)
 
     # check, commit and push
@@ -184,7 +181,7 @@ def update_version(config):
     if no('Do the version update changes look right?'):
         exit(1)
     doechocall('Adding', ['git', 'add', meta_file, init_file, setup_file])
-    doechocall('Committing', ['git', 'commit', '-m', 'bump version to {}'.format(version)])
+    doechocall('Committing', ['git', 'commit', '-m', f'bump version to {version}'])
     print(echocall(['git', 'log', '-1']))
 
 
@@ -202,18 +199,17 @@ def update_changelog(config):
         fpath = join(config['src_documentation'], 'changes.rst')
         with open(fpath) as f:
             lines = f.readlines()
-            expected_title = "Version {}".format(short(release_name))
+            expected_title = f"Version {short(release_name)}"
             title = lines[3]
             if title != expected_title + '\n':
-                print('changes.rst not modified (the version title is "{}" and instead of "{}")'
-                      .format(title, expected_title))
+                print(f'changes.rst not modified (the version title is "{title}" and instead of "{expected_title}")')
                 return
             release_date = lines[6]
             if release_date != "In development.\n":
-                print('changes.rst not modified (the version release date is "{}" '
-                      'instead of "In development.", was it already released?)'.format(release_date))
+                print(f'changes.rst not modified (the version release date is "{release_date}" '
+                      'instead of "In development.", was it already released?)')
                 return
-            lines[6] = "Released on {}.\n".format(date.today().isoformat())
+            lines[6] = f"Released on {date.today().isoformat()}.\n"
         with open(fpath, 'w') as f:
             f.writelines(lines)
         with open(fpath, encoding='utf-8-sig') as f:
@@ -221,7 +217,7 @@ def update_changelog(config):
             print('\n'.join(f.read().splitlines()[:20]))
         if no('Does the changelog look right?'):
             exit(1)
-        echocall(['git', 'commit', '-m', 'update release date for {}'.format(short(release_name)), fpath])
+        echocall(['git', 'commit', '-m', f'update release date for {short(release_name)}', fpath])
 
 
 def build_doc(config):
@@ -254,7 +250,7 @@ def tag_release(config):
         return
 
     release_name = config['release_name']
-    echocall(['git', 'tag', '-a', release_name, '-m', 'tag release {}'.format(release_name)])
+    echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
 def push_on_pypi(config):
@@ -264,10 +260,10 @@ def push_on_pypi(config):
         return
 
     cmd = ['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal', 'upload', '-r', 'pypi']
-    msg = """Ready to push on pypi? If so, command line 
-    {} 
+    msg = f"""Ready to push on pypi? If so, command line 
+    {' '.join(cmd)} 
 will now be executed.
-""".format(' '.join(cmd))
+"""
     if no(msg):
         exit(1)
     echocall(cmd)
@@ -279,8 +275,9 @@ def pull(config):
 
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
-    chdir(config['repository'])
-    doechocall('Pulling changes in {repository}'.format(**config),
+    repository = config['repository']
+    chdir(repository)
+    doechocall(f'Pulling changes in {repository}',
                ['git', 'pull', '--ff-only', '--tags', config['build_dir'], config['branch']])
 
 
@@ -375,7 +372,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
 
         # release_name = long_release_name(release_name)
 
-    rev = git_remote_last_rev(local_repository, 'refs/heads/{}'.format(branch))
+    rev = git_remote_last_rev(local_repository, f'refs/heads/{branch}')
     public_release = release_name != 'dev'
     if not public_release:
         # take first 7 digits of commit hash
@@ -383,10 +380,10 @@ def set_config(local_repository, package_name, module_name, release_name, branch
 
     if tmp_dir is None:
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp",
-                       "{}_release".format(module_name))
+                       f"{module_name}_release")
 
     # TODO: make this configurable
-    conda_recipe_path = r'condarecipe/{}'.format(package_name)
+    conda_recipe_path = fr'condarecipe/{package_name}'
     config = {
         'rev': rev,
         'branch': branch,
