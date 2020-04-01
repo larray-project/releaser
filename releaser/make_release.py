@@ -3,6 +3,7 @@
 # Licence: GPLv3
 # Requires:
 # * git
+# * a local git repository with a remote called 'upstream'
 import sys
 from datetime import date
 from os import makedirs
@@ -10,18 +11,18 @@ from os.path import exists, join
 from subprocess import check_call
 
 from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short,
-                            git_remote_last_rev, replace_lines, release_changes, echocall, chdir)
+                            git_remote_last_rev, git_remote_url,
+                            replace_lines, release_changes, echocall, chdir, underline)
 
 # ----- #
 # steps #
 # ----- #
 
 
-def check_local_repo(repository, branch, release_name, rev, **extra_kwargs):
+def check_local_repo(local_repository, branch, release_name, **extra_kwargs):
     # releasing from the local clone has the advantage we can prepare the
     # release offline and only push and upload it when we get back online
-    s = f"Using local repository at: {repository} !"
-    print("\n", s, "\n", "=" * len(s), "\n", sep='')
+    print("\n", underline(f"Using repository at: {local_repository} !"), "\n", sep='')
 
     status = call(['git', 'status', '-s', '-b'])
     lines = status.splitlines()
@@ -40,17 +41,45 @@ def check_local_repo(repository, branch, release_name, rev, **extra_kwargs):
         if no('Do you want to continue?'):
             exit(1)
 
-    ahead = call(['git', 'log', '--format=format:%H', f'origin/{branch}..{branch}'])
-    num_ahead = len(ahead.splitlines())
-    print(f"Branch '{branch}' is {num_ahead:d} commits ahead of 'origin/{branch}'", end='')
-    if num_ahead:
-        if yes(', do you want to push?'):
-            doechocall('Pushing changes', ['git', 'push'])
+    # fetch upstream
+    doechocall('Fetching upstream changes', ['git', 'fetch', '--tags', 'upstream'])
+
+    branch_exists_on_upstream = len(call(['git', 'ls-remote', '--heads', 'upstream', branch])) > 0
+    if branch_exists_on_upstream:
+        num_behind = int(call(['git', 'rev-list', f'{branch}..upstream/{branch}', '--count']))
+        num_ahead = int(call(['git', 'rev-list', f'upstream/{branch}..{branch}', '--count']))
+        print(f"Branch '{branch}' is {num_behind:d} commits behind and {num_ahead:d} commits ahead of "
+              f"'upstream/{branch}'", end='')
+    else:
+        # we are ahead an indefinite number of commits
+        num_behind = 0
+        num_ahead = 1
+        print(f"Branch '{branch}' does not exist on upstream", end='')
+
+    if num_ahead and num_behind:
+        print(", please merge or rebase before continuing!")
+        exit(1)
+    elif num_behind:
+        if yes(', do you want to merge (fast-forward) the new changes?'):
+            doechocall('Merging (fast-forward) changes', ['git', 'merge', '--ff-only', f'upstream/{branch}'])
+    elif num_ahead:
+        if yes(', do you want to push it?'):
+            doechocall('Pushing changes', ['git', 'push', 'upstream', branch])
     else:
         print()
 
+    if release_name == 'dev':
+        rev = call(['git', 'log', '-1', '--format=%H'])
+        # take first 7 digits of commit hash
+        release_name = rev[:7]
+    else:
+        rev = git_remote_last_rev('upstream', branch=branch)
+
     if no(f"Release version {release_name} ({rev})?"):
         exit(1)
+
+    upstream_repository = git_remote_url('upstream')
+    return {'upstream_repository': upstream_repository, 'release_name': release_name, 'rev': rev}
 
 
 def create_tmp_directory(tmp_dir, **extra_kwargs):
@@ -59,7 +88,7 @@ def create_tmp_directory(tmp_dir, **extra_kwargs):
     makedirs(tmp_dir)
 
 
-def clone_repository(tmp_dir, branch, repository, **extra_kwargs):
+def clone_repository(tmp_dir, branch, upstream_repository, **extra_kwargs):
     chdir(tmp_dir)
 
     # make a temporary clone in /tmp. The goal is to make sure we do not include extra/unversioned files. For the -src
@@ -70,10 +99,10 @@ def clone_repository(tmp_dir, branch, repository, **extra_kwargs):
     # by updating the temporary clone then push twice: first from the temporary clone to the "working copy clone" (eg
     # ~/devel/project) then to GitHub from there. The alternative to modify the "working copy clone" directly is worse
     # because it needs more complicated path handling that the 2 push approach.
-    doechocall('Cloning repository', ['git', 'clone', '-b', branch, repository, 'build'])
+    doechocall('Cloning repository', ['git', 'clone', '-b', branch, upstream_repository, 'build'])
 
 
-def check_clone(build_dir, public_release, src_documentation, release_name, **extra_kwargs):
+def check_clone(build_dir, public_release, src_documentation, release_name, upstream_repository, **extra_kwargs):
     chdir(build_dir)
 
     # check last commit
@@ -89,6 +118,11 @@ def check_clone(build_dir, public_release, src_documentation, release_name, **ex
         print(release_changes(src_documentation, release_name, build_dir))
         if no('Does the release changelog look right?'):
             exit(1)
+
+    # set upstream remote
+    chdir(build_dir)
+    doechocall(f'setting upstream to {upstream_repository}.git',
+               ['git', 'remote', 'add', 'upstream', f'{upstream_repository}.git'])
 
 
 def create_source_archive(build_dir, package_name, release_name, rev, **extra_kwargs):
@@ -210,28 +244,29 @@ will now be executed.
     echocall(cmd)
 
 
-def pull(repository, public_release, build_dir, branch, **extra_kwargs):
+def pull_in_local_repo(local_repository, public_release, build_dir, branch, **extra_kwargs):
     if not public_release:
         return
 
     # pull the generated commits and the release tag (which refers to the last commit)
-    chdir(repository)
-    doechocall(f'Pulling changes in {repository}',
+    chdir(local_repository)
+    doechocall(f'Pulling changes in {local_repository}',
                ['git', 'pull', '--ff-only', '--tags', build_dir, branch])
 
 
-def push(repository, public_release, branch, **extra_kwargs):
+def push(build_dir, public_release, branch, **extra_kwargs):
     if not public_release:
         return
 
-    chdir(repository)
-    doechocall('Pushing main repository changes to GitHub',
+    chdir(build_dir)
+    doechocall('Pushing main repository changes to upstream',
                ['git', 'push', 'upstream', branch, '--follow-tags'])
 
 
 def build_conda_packages(conda_recipe_path, build_dir, conda_build_args, **extra_kwargs):
     if conda_recipe_path is None:
         return
+
     chdir(build_dir)
     print()
     print('Building conda packages')
@@ -266,22 +301,12 @@ steps_funcs = [
     # (create_source_archive, 'Creating source archive'),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
-    # We used to push from /tmp to the local repository but you cannot push
-    # to the currently checked out branch of a repository, so we need to
-    # pull changes instead. However pull (or merge) add changes to the
-    # current branch, hence we make sure at the beginning of the script
-    # that the current git branch is the branch to release. It would be
-    # possible to do so without a checkout by using:
-    # git fetch {tmp_path} {branch}:{branch}
-    # instead but then it only works for fast-forward and non-conflicting
-    # changes. So if the working copy is dirty, you are out of luck.
-    (pull, ''),
-    # >>> need internet from here
     (push, ''),
     (push_on_pypi, 'Pushing on Pypi'),
     (build_conda_packages, ''),
     # assume the tar archive for the new release exists
     (cleanup, 'Cleaning up'),
+    (pull_in_local_repo, ''),
 ]
 
 
@@ -296,24 +321,17 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     steps_funcs.insert(index, (func, msg))
 
 
-def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir,
-               conda_build_args=None):
+def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
+               tmp_dir=None, conda_build_args=None):
     if conda_build_args is not None and not isinstance(conda_build_args, dict):
         raise TypeError("'conda_build_args' argument must be None or a dict")
 
-    if release_name != 'dev':
+    public_release = release_name != 'dev'
+    if public_release:
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
         if '-' in release_name:
             raise ValueError("- is not supported anymore")
-
-        # release_name = long_release_name(release_name)
-
-    rev = git_remote_last_rev(local_repository, f'refs/heads/{branch}')
-    public_release = release_name != 'dev'
-    if not public_release:
-        # take first 7 digits of commit hash
-        release_name = rev[:7]
 
     if tmp_dir is None:
         # TODO: use something more standard on Windows
@@ -323,12 +341,11 @@ def set_config(local_repository, package_name, module_name, release_name, branch
     # TODO: make this configurable
     conda_recipe_path = fr'condarecipe/{package_name}'
     config = {
-        'rev': rev,
         'branch': branch,
         'release_name': release_name,
         'package_name': package_name,
         'module_name': module_name,
-        'repository': local_repository,
+        'local_repository': local_repository,
         'src_documentation': src_documentation,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),

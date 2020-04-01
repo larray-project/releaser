@@ -100,6 +100,13 @@ def echocall(*args, **kwargs):
     return call(*args, **kwargs)
 
 
+def underline(s, c='='):
+    """
+    returns `s` string underlined using `c`
+    """
+    return f"{s}\n{c * len(s)}\n"
+
+
 def branchname(statusline):
     """
     computes the branch name from a "git status -b -s" line
@@ -260,11 +267,11 @@ def replace_lines(fpath, changes, end="\n"):
         f.writelines(lines)
 
 
-def git_remote_last_rev(url, branch=None):
+def git_remote_last_rev(repository, branch='master'):
     """
     Parameters
     ----------
-    url : str
+    repository : str
         name or url of the remote repository
     branch : str, optional
         branch. Defaults to 'refs/heads/master'.
@@ -274,11 +281,10 @@ def git_remote_last_rev(url, branch=None):
     str
         hash of the last revision
     """
-    if branch is None:
-        branch = 'refs/heads/master'
-    output = call(['git', 'ls-remote', url, branch])
+    output = call(['git', 'ls-remote', '--heads', repository, branch])
+    suffix = f'refs/heads/{branch}'
     for line in output.splitlines():
-        if line.endswith(branch):
+        if line.endswith(suffix):
             return line.split()[0]
     raise Exception("Could not determine revision number")
 
