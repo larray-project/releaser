@@ -354,10 +354,14 @@ def run_steps(config, steps, steps_funcs):
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:
             print(step_desc + '...', end=' ')
-            step_func(**config)
+
+        config_update = step_func(**config)
+        if config_update is not None:
+            assert isinstance(config_update, dict)
+            config.update(config_update)
+
+        if step_desc:
             print("done.")
-        else:
-            step_func(**config)
 
 
 def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',
