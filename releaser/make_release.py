@@ -132,15 +132,10 @@ def create_source_archive(build_dir, package_name, release_name, rev, **extra_kw
     echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
-def update_version(build_dir, release_name, package_name, module_name, **extra_kwargs):
+def update_version(build_dir, release_name, package_name, module_name, public_release, **extra_kwargs):
     chdir(build_dir)
 
     version = short(release_name)
-    # meta.yaml
-    meta_file = join('condarecipe', package_name, 'meta.yaml')
-    changes = [('version: ', f"  version: {version}"),
-               ('git_tag: ', f"  git_tag: {version}")]
-    replace_lines(meta_file, changes)
 
     # __init__.py
     init_file = join(module_name, '__init__.py')
@@ -152,12 +147,22 @@ def update_version(build_dir, release_name, package_name, module_name, **extra_k
     changes = [('VERSION =', f"VERSION = '{version}'")]
     replace_lines(setup_file, changes)
 
+    changed_files = [init_file, setup_file]
+
+    # meta.yaml
+    if public_release and not release_name.endswith('-dev'):
+        meta_file = join('condarecipe', package_name, 'meta.yaml')
+        changes = [('version: ', f"  version: {version}"),
+                   ('git_tag: ', f"  git_tag: {version}")]
+        replace_lines(meta_file, changes)
+        changed_files.append(meta_file)
+
     # check, commit and push
     print(echocall(['git', 'status', '-s']))
-    print(echocall(['git', 'diff', meta_file, init_file, setup_file]))
+    print(echocall(['git', 'diff', *changed_files]))
     if no('Do the version update changes look right?'):
         exit(1)
-    doechocall('Adding', ['git', 'add', meta_file, init_file, setup_file])
+    doechocall('Adding', ['git', 'add', *changed_files])
     doechocall('Committing', ['git', 'commit', '-m', f'bump version to {version}'])
     print(echocall(['git', 'log', '-1']))
 
