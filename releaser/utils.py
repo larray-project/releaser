@@ -225,10 +225,6 @@ def isprerelease(release_name):
     return pretag_pos(release_name) is not None
 
 
-# -------------------- #
-# end of generic tools #
-# -------------------- #
-
 # ---------------- #
 # helper functions #
 # ---------------- #
@@ -266,9 +262,17 @@ def replace_lines(fpath, changes, end="\n"):
 
 def git_remote_last_rev(url, branch=None):
     """
-    :param url: url of the remote repository
-    :param branch: an optional branch (defaults to 'refs/heads/master')
-    :return: name/hash of the last revision
+    Parameters
+    ----------
+    url : str
+        name or url of the remote repository
+    branch : str, optional
+        branch. Defaults to 'refs/heads/master'.
+
+    Returns
+    -------
+    str
+        hash of the last revision
     """
     if branch is None:
         branch = 'refs/heads/master'
@@ -279,6 +283,7 @@ def git_remote_last_rev(url, branch=None):
     raise Exception("Could not determine revision number")
 
 
-# ----------------------- #
-# end of helper functions #
-# ----------------------- #
+def git_remote_url(remote_name):
+    output_lines = call(['git', 'remote', 'get-url', remote_name]).splitlines()
+    assert len(output_lines) == 1
+    return output_lines[0]

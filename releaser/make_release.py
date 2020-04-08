@@ -132,34 +132,35 @@ def update_changelog(src_documentation, build_dir, public_release, release_name,
     """
     Update release date in changes.rst
     """
-    if src_documentation is not None:
-        chdir(build_dir)
+    if src_documentation is None or not public_release:
+        return
 
-        if not public_release:
+    chdir(build_dir)
+    fpath = join(src_documentation, 'changes.rst')
+    with open(fpath) as f:
+        lines = f.readlines()
+        expected_title = f"Version {short(release_name)}"
+        title = lines[3]
+        if title != expected_title + '\n':
+            print(f'changes.rst not modified (the version title is "{title}" and instead of "{expected_title}")')
             return
+        release_date = lines[6]
+        if release_date != "In development.\n":
+            print(f'changes.rst not modified (the version release date is "{release_date}" '
+                  'instead of "In development.", was it already released?)')
+            return
+        lines[6] = f"Released on {date.today().isoformat()}.\n"
+    with open(fpath, 'w') as f:
+        f.writelines(lines)
 
-        fpath = join(src_documentation, 'changes.rst')
-        with open(fpath) as f:
-            lines = f.readlines()
-            expected_title = f"Version {short(release_name)}"
-            title = lines[3]
-            if title != expected_title + '\n':
-                print(f'changes.rst not modified (the version title is "{title}" and instead of "{expected_title}")')
-                return
-            release_date = lines[6]
-            if release_date != "In development.\n":
-                print(f'changes.rst not modified (the version release date is "{release_date}" '
-                      'instead of "In development.", was it already released?)')
-                return
-            lines[6] = f"Released on {date.today().isoformat()}.\n"
-        with open(fpath, 'w') as f:
-            f.writelines(lines)
-        with open(fpath, encoding='utf-8-sig') as f:
-            print()
-            print('\n'.join(f.read().splitlines()[:20]))
-        if no('Does the changelog look right?'):
-            exit(1)
-        echocall(['git', 'commit', '-m', f'update release date for {short(release_name)}', fpath])
+    # display result
+    with open(fpath, encoding='utf-8-sig') as f:
+        lines = f.readlines()
+    print()
+    print('\n'.join(lines[:20]))
+    if no('Does the changelog look right?'):
+        exit(1)
+    echocall(['git', 'commit', '-m', f'update release date for {short(release_name)}', fpath])
 
 
 def build_doc(build_dir, **extra_kwargs):
@@ -190,7 +191,6 @@ def tag_release(build_dir, public_release, release_name, **extra_kwargs):
         return
 
     chdir(build_dir)
-
     echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
@@ -214,8 +214,7 @@ def pull(repository, public_release, build_dir, branch, **extra_kwargs):
     if not public_release:
         return
 
-    # pull the changelog commits to the branch (usually master)
-    # and the release tag (which refers to the last commit)
+    # pull the generated commits and the release tag (which refers to the last commit)
     chdir(repository)
     doechocall(f'Pulling changes in {repository}',
                ['git', 'pull', '--ff-only', '--tags', build_dir, branch])
@@ -298,7 +297,7 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
 
 
 def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation, tmp_dir,
-               conda_build_args):
+               conda_build_args=None):
     if conda_build_args is not None and not isinstance(conda_build_args, dict):
         raise TypeError("'conda_build_args' argument must be None or a dict")
 
@@ -317,6 +316,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         release_name = rev[:7]
 
     if tmp_dir is None:
+        # TODO: use something more standard on Windows
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp",
                        f"{module_name}_release")
 
