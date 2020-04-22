@@ -29,8 +29,8 @@ def update_version_conda_forge_package(build_dir, version, main_repository, **ex
 
     # set version and sha256 in meta.yml file
     meta_file = r'recipe\meta.yaml'
-    changes = [('set version', f'{{% set version = "{version}" %}}'),
-               ('set sha256', f'{{% set sha256 = "{sha256}" %}}')]
+    changes = [('{% set version = "', f'{{% set version = "{version}" %}}'),
+               ('  sha256:', f'  sha256: {sha256}')]
     replace_lines(meta_file, changes)
 
     # add, commit and push
