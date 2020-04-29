@@ -8,7 +8,7 @@ import hashlib
 import urllib.request as request
 from os.path import join
 
-from releaser.utils import call, echocall, doechocall, no, replace_lines, chdir
+from releaser.utils import echocall, doechocall, no, replace_lines, chdir
 from releaser.make_release import create_tmp_directory, clone_repository, cleanup, run_steps
 
 
@@ -24,8 +24,8 @@ def update_version_conda_forge_package(build_dir, version, main_repository, **ex
     print(f'Computing SHA256 from archive {url}', end=' ')
     with request.urlopen(url) as response:
         sha256 = hashlib.sha256(response.read()).hexdigest()
-        print('done.')
-        print('SHA256: ', sha256)
+    print('done.')
+    print('SHA256: ', sha256)
 
     # set version and sha256 in meta.yml file
     meta_file = r'recipe\meta.yaml'
@@ -52,9 +52,6 @@ def push_conda_forge(build_dir, branch, **extra_kwargs):
 # ------------ #
 
 steps_funcs = [
-    ########################################
-    # UPDATE LARRAY PACKAGE ON CONDA-FORGE #
-    ########################################
     (create_tmp_directory, ''),
     (clone_repository, ''),
     (update_version_conda_forge_package, ''),
@@ -63,23 +60,23 @@ steps_funcs = [
 ]
 
 
-def set_config_conda(main_repository, feedstock_repository, module_name, version, branch, tmp_dir):
+def set_config_conda(upstream_repository, feedstock_repository, module_name, version, branch, tmp_dir):
     if tmp_dir is None:
-        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", "{}_feedstock".format(module_name))
+        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", f"{module_name}_feedstock")
 
     config = {
         'module_name': module_name,
         'branch': branch,
         'version': version,
-        'main_repository': main_repository,
-        'repository': feedstock_repository,
+        'main_repository': upstream_repository,
+        'upstream_repository': feedstock_repository,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
     }
     return config
 
 
-def update_feedstock(main_repository, feedstock_repository, module_name, release_name, steps=':', branch='master',
-                     tmp_dir=None):
-    config = set_config_conda(main_repository, feedstock_repository, module_name, release_name, branch, tmp_dir)
-    run_steps(config, steps, steps_funcs)
+def update_feedstock(upstream_repository, feedstock_repository, module_name, release_name, steps_filter=':',
+                     branch='master', tmp_dir=None):
+    config = set_config_conda(upstream_repository, feedstock_repository, module_name, release_name, branch, tmp_dir)
+    run_steps(config, steps_funcs, steps_filter)

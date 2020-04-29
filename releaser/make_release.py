@@ -157,7 +157,7 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
         replace_lines(meta_file, changes)
         changed_files.append(meta_file)
 
-    # check, commit and push
+    # check and commit changes
     print(echocall(['git', 'status', '-s']))
     print(echocall(['git', 'diff', *changed_files]))
     if no('Do the version update changes look right?'):
@@ -264,7 +264,7 @@ def push(build_dir, public_release, branch, **extra_kwargs):
         return
 
     chdir(build_dir)
-    doechocall('Pushing main repository changes to upstream',
+    doechocall('Pushing main repository changes upstream',
                ['git', 'push', 'upstream', branch, '--follow-tags'])
 
 
@@ -279,6 +279,7 @@ def build_conda_packages(conda_recipe_path, build_dir, conda_build_args, **extra
     # XXX: split build & upload? (--no-anaconda-upload)
     cmd = ['conda', 'build']
     if conda_build_args:
+        # transform dict to flat list
         for arg_name, arg_value in conda_build_args.items():
             cmd += [arg_name, arg_value]
     cmd += [conda_recipe_path]
@@ -361,16 +362,16 @@ def set_config(local_repository, package_name, module_name, release_name, branch
     return config
 
 
-def run_steps(config, steps, steps_funcs):
+def run_steps(config, steps_funcs, steps_filter):
     func_names = [f.__name__ for f, desc in steps_funcs]
-    if ':' in steps:
-        start, stop = steps.split(':')
+    if ':' in steps_filter:
+        start, stop = steps_filter.split(':')
         start = func_names.index(start) if start else 0
         # + 1 so that stop bound is inclusive
         stop = func_names.index(stop) + 1 if stop else len(func_names)
     else:
         # assuming a single step
-        start = func_names.index(steps)
+        start = func_names.index(steps_filter)
         stop = start + 1
 
     for step_func, step_desc in steps_funcs[start:stop]:
@@ -386,8 +387,8 @@ def run_steps(config, steps, steps_funcs):
             print("done.")
 
 
-def make_release(local_repository, package_name, module_name, release_name='dev', steps=':', branch='master',
+def make_release(local_repository, package_name, module_name, release_name='dev', steps_filter=':', branch='master',
                  src_documentation=None, tmp_dir=None, conda_build_args=None):
     config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
                         tmp_dir, conda_build_args)
-    run_steps(config, steps, steps_funcs)
+    run_steps(config, steps_funcs, steps_filter)

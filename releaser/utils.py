@@ -51,11 +51,10 @@ def chdir(path):
     os.chdir(path)
 
 
-def force_decode(s):
+def force_decode(s, encodings=('utf8', 'cp1252')):
     if isinstance(s, str):
         return s
     assert isinstance(s, bytes)
-    encodings = ['utf8', 'cp1252']
     for encoding in encodings:
         try:
             return s.decode(encoding)
@@ -254,6 +253,8 @@ def replace_lines(fpath, changes, end="\n"):
     """
     Parameters
     ----------
+    fpath : str
+        Path to the file to modify.
     changes : list of pairs
         List of pairs (substring_to_find, new_line).
     """
@@ -272,9 +273,9 @@ def git_remote_last_rev(repository, branch='master'):
     Parameters
     ----------
     repository : str
-        name or url of the remote repository
+        Name or url of the remote repository
     branch : str, optional
-        branch. Defaults to 'refs/heads/master'.
+        Branch. Defaults to 'master'.
 
     Returns
     -------
@@ -289,7 +290,20 @@ def git_remote_last_rev(repository, branch='master'):
     raise Exception("Could not determine revision number")
 
 
-def git_remote_url(remote_name):
+def git_remote_url(remote_name='origin'):
+    """
+    Return URL of a git remote
+
+    Parameters
+    ----------
+    remote_name : str, optional
+        Name of remote. Defaults to 'origin'.
+
+    Returns
+    -------
+    str
+        URL of remote
+    """
     output_lines = call(['git', 'remote', 'get-url', remote_name]).splitlines()
     assert len(output_lines) == 1
     return output_lines[0]
