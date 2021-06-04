@@ -121,8 +121,8 @@ def check_clone(build_dir, public_release, src_documentation, release_name, upst
 
     # set upstream remote
     chdir(build_dir)
-    doechocall(f'setting upstream to {upstream_repository}.git',
-               ['git', 'remote', 'add', 'upstream', f'{upstream_repository}.git'])
+    doechocall(f'setting upstream to {upstream_repository}',
+               ['git', 'remote', 'add', 'upstream', upstream_repository])
 
 
 def create_source_archive(build_dir, package_name, release_name, rev, **extra_kwargs):
