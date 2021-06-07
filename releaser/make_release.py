@@ -249,14 +249,14 @@ will now be executed.
     echocall(cmd)
 
 
-def pull_in_local_repo(local_repository, public_release, build_dir, branch, **extra_kwargs):
+def pull_in_local_repo(local_repository, public_release, branch, **extra_kwargs):
     if not public_release:
         return
 
     # pull the generated commits and the release tag (which refers to the last commit)
     chdir(local_repository)
     doechocall(f'Pulling changes in {local_repository}',
-               ['git', 'pull', '--ff-only', '--tags', build_dir, branch])
+               ['git', 'pull', '--ff-only', '--tags', '.', branch])
 
 
 def push(build_dir, public_release, branch, **extra_kwargs):
