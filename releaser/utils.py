@@ -388,8 +388,7 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
     # meta.yaml
     if public_release and not release_name.endswith('-dev'):
         meta_file = join('condarecipe', package_name, 'meta.yaml')
-        changes = [('version: ', f"  version: {version}"),
-                   ('git_tag: ', f"  git_tag: {version}")]
+        changes = [('{% set version', '{% set version = "' + version + '" %}'), ]
         replace_lines(meta_file, changes)
         changed_files.append(meta_file)
 
