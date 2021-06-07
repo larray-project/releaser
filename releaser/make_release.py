@@ -10,9 +10,8 @@ from os import makedirs
 from os.path import exists, join
 from subprocess import check_call
 
-from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short,
-                            git_remote_last_rev, git_remote_url,
-                            replace_lines, release_changes, echocall, chdir, underline)
+from releaser.utils import (set_config, call, doechocall, yes, no, rmtree, branchname, short, git_remote_last_rev,
+                            git_remote_url, update_version, release_changes, echocall, chdir, underline)
 
 # ----- #
 # steps #
@@ -130,41 +129,6 @@ def create_source_archive(build_dir, package_name, release_name, rev, **extra_kw
 
     archive_name = f'..\\{package_name}-{release_name}-src.zip'
     echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
-
-
-def update_version(build_dir, release_name, package_name, module_name, public_release, **extra_kwargs):
-    chdir(build_dir)
-
-    version = short(release_name)
-
-    # __init__.py
-    init_file = join(module_name, '__init__.py')
-    changes = [('__version__ =', f"__version__ = '{version}'")]
-    replace_lines(init_file, changes)
-
-    # setup.py
-    setup_file = 'setup.py'
-    changes = [('VERSION =', f"VERSION = '{version}'")]
-    replace_lines(setup_file, changes)
-
-    changed_files = [init_file, setup_file]
-
-    # meta.yaml
-    if public_release and not release_name.endswith('-dev'):
-        meta_file = join('condarecipe', package_name, 'meta.yaml')
-        changes = [('version: ', f"  version: {version}"),
-                   ('git_tag: ', f"  git_tag: {version}")]
-        replace_lines(meta_file, changes)
-        changed_files.append(meta_file)
-
-    # check and commit changes
-    print(echocall(['git', 'status', '-s']))
-    print(echocall(['git', 'diff', *changed_files]))
-    if no('Do the version update changes look right?'):
-        exit(1)
-    doechocall('Adding', ['git', 'add', *changed_files])
-    doechocall('Committing', ['git', 'commit', '-m', f'bump version to {version}'])
-    print(echocall(['git', 'log', '-1']))
 
 
 def update_changelog(src_documentation, build_dir, public_release, release_name, **extra_kwargs):
@@ -325,41 +289,6 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     elif after is not None:
         index = func_names.index(after) + 1
     steps_funcs.insert(index, (func, msg))
-
-
-def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
-               tmp_dir=None, conda_build_args=None):
-    if conda_build_args is not None and not isinstance(conda_build_args, dict):
-        raise TypeError("'conda_build_args' argument must be None or a dict")
-
-    public_release = release_name != 'dev'
-    if public_release:
-        if 'pre' in release_name:
-            raise ValueError("'pre' is not supported anymore, use 'alpha' or 'beta' instead")
-        if '-' in release_name:
-            raise ValueError("- is not supported anymore")
-
-    if tmp_dir is None:
-        # TODO: use something more standard on Windows
-        tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp",
-                       f"{module_name}_release")
-
-    # TODO: make this configurable
-    conda_recipe_path = fr'condarecipe/{package_name}'
-    config = {
-        'branch': branch,
-        'release_name': release_name,
-        'package_name': package_name,
-        'module_name': module_name,
-        'local_repository': local_repository,
-        'src_documentation': src_documentation,
-        'tmp_dir': tmp_dir,
-        'build_dir': join(tmp_dir, 'build'),
-        'conda_build_args': conda_build_args,
-        'conda_recipe_path': conda_recipe_path,
-        'public_release': public_release,
-    }
-    return config
 
 
 def run_steps(config, steps_funcs, steps_filter):

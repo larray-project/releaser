@@ -4,23 +4,11 @@
 from os.path import join
 from shutil import copy
 
-from releaser.utils import relname2fname, no, short, echocall, chdir
+from releaser.utils import relname2fname, no, short, echocall, chdir, set_config
 from releaser.make_release import update_version
 
 
-DEFAULT_CHANGELOG_INDEX_TEMPLATE = """{title}
-{underline}
-
-In development.
-
-.. include:: ./changes/{fname}
-
-
-"""
-
-
-def update_changelog(src_documentation, build_dir, release_name,
-                     changelog_index_template=DEFAULT_CHANGELOG_INDEX_TEMPLATE):
+def update_changelog(src_documentation, build_dir, release_name, changelog_index_template, **extra_kwargs):
     chdir(build_dir)
 
     fname = relname2fname(release_name)
@@ -51,13 +39,15 @@ def update_changelog(src_documentation, build_dir, release_name,
     echocall(['git', 'add', fpath, changelog_file])
 
 
-def add_release(local_repository, package_name, module_name, release_name, src_documentation=None,
-                changelog_index_template=DEFAULT_CHANGELOG_INDEX_TEMPLATE):
-    if src_documentation is not None:
-        update_changelog(src_documentation, build_dir=local_repository, release_name=release_name,
-                         changelog_index_template=changelog_index_template)
+def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None,
+                changelog_index_template=None):
+    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
+                        changelog_index_template=changelog_index_template, create_build_dir=False)
 
-    update_version(build_dir=local_repository, release_name=release_name + '-dev', package_name=package_name,
-                   module_name=module_name)
+    if src_documentation is not None:
+        update_changelog(**config)
+
+    config['release_name'] = release_name + '-dev'
+    update_version(**config)
     # we should NOT push by default as next_release can be called when the working copy is on a branch (when we want to
     # add release notes for features which are not targeted for the current release)
