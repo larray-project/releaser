@@ -4,8 +4,19 @@
 from os.path import join
 from shutil import copy
 
-from releaser.utils import relname2fname, no, short, echocall, chdir, set_config
-from releaser.make_release import update_version
+from releaser.utils import relname2fname, no, short, echocall, chdir
+from releaser.make_release import update_version, set_config
+
+
+DEFAULT_CHANGELOG_INDEX_TEMPLATE = """{title}
+{underline}
+
+In development.
+
+.. include:: ./changes/{fname}
+
+
+"""
 
 
 def update_changelog(src_documentation, build_dir, release_name, changelog_index_template, **extra_kwargs):
@@ -41,6 +52,9 @@ def update_changelog(src_documentation, build_dir, release_name, changelog_index
 
 def add_release(local_repository, package_name, module_name, release_name, branch='master', src_documentation=None,
                 changelog_index_template=None):
+    if changelog_index_template is None:
+        changelog_index_template = DEFAULT_CHANGELOG_INDEX_TEMPLATE
+
     config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
                         changelog_index_template=changelog_index_template, create_build_dir=False)
 
