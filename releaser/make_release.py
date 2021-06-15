@@ -10,9 +10,8 @@ from os import makedirs
 from os.path import exists, join
 from subprocess import check_call
 
-from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short,
-                            git_remote_last_rev, git_remote_url,
-                            replace_lines, release_changes, echocall, chdir, underline)
+from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short, git_remote_last_rev,
+                            git_remote_url, release_changes, echocall, chdir, underline, replace_lines)
 
 # ----- #
 # steps #
@@ -125,13 +124,6 @@ def check_clone(build_dir, public_release, src_documentation, release_name, upst
                ['git', 'remote', 'add', 'upstream', upstream_repository])
 
 
-def create_source_archive(build_dir, package_name, release_name, rev, **extra_kwargs):
-    chdir(build_dir)
-
-    archive_name = f'..\\{package_name}-{release_name}-src.zip'
-    echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
-
-
 def update_version(build_dir, release_name, package_name, module_name, public_release, **extra_kwargs):
     chdir(build_dir)
 
@@ -152,8 +144,7 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
     # meta.yaml
     if public_release and not release_name.endswith('-dev'):
         meta_file = join('condarecipe', package_name, 'meta.yaml')
-        changes = [('version: ', f"  version: {version}"),
-                   ('git_tag: ', f"  git_tag: {version}")]
+        changes = [('{% set version', '{% set version = "' + version + '" %}'), ]
         replace_lines(meta_file, changes)
         changed_files.append(meta_file)
 
@@ -165,6 +156,13 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
     doechocall('Adding', ['git', 'add', *changed_files])
     doechocall('Committing', ['git', 'commit', '-m', f'bump version to {version}'])
     print(echocall(['git', 'log', '-1']))
+
+
+def create_source_archive(build_dir, package_name, release_name, rev, **extra_kwargs):
+    chdir(build_dir)
+
+    archive_name = f'..\\{package_name}-{release_name}-src.zip'
+    echocall(['git', 'archive', '--format', 'zip', '--output', archive_name, rev])
 
 
 def update_changelog(src_documentation, build_dir, public_release, release_name, **extra_kwargs):
@@ -327,8 +325,33 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     steps_funcs.insert(index, (func, msg))
 
 
+def run_steps(config, steps_funcs, steps_filter):
+    func_names = [f.__name__ for f, desc in steps_funcs]
+    if ':' in steps_filter:
+        start, stop = steps_filter.split(':')
+        start = func_names.index(start) if start else 0
+        # + 1 so that stop bound is inclusive
+        stop = func_names.index(stop) + 1 if stop else len(func_names)
+    else:
+        # assuming a single step
+        start = func_names.index(steps_filter)
+        stop = start + 1
+
+    for step_func, step_desc in steps_funcs[start:stop]:
+        if step_desc:
+            print(step_desc + '...', end=' ')
+
+        config_update = step_func(**config)
+        if config_update is not None:
+            assert isinstance(config_update, dict)
+            config.update(config_update)
+
+        if step_desc:
+            print("done.")
+
+
 def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
-               tmp_dir=None, conda_build_args=None):
+               tmp_dir=None, conda_build_args=None, changelog_index_template=None, create_build_dir=True):
     if conda_build_args is not None and not isinstance(conda_build_args, dict):
         raise TypeError("'conda_build_args' argument must be None or a dict")
 
@@ -354,37 +377,13 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'local_repository': local_repository,
         'src_documentation': src_documentation,
         'tmp_dir': tmp_dir,
-        'build_dir': join(tmp_dir, 'build'),
+        'build_dir': join(tmp_dir, 'build') if create_build_dir else local_repository,
         'conda_build_args': conda_build_args,
         'conda_recipe_path': conda_recipe_path,
         'public_release': public_release,
+        'changelog_index_template': changelog_index_template,
     }
     return config
-
-
-def run_steps(config, steps_funcs, steps_filter):
-    func_names = [f.__name__ for f, desc in steps_funcs]
-    if ':' in steps_filter:
-        start, stop = steps_filter.split(':')
-        start = func_names.index(start) if start else 0
-        # + 1 so that stop bound is inclusive
-        stop = func_names.index(stop) + 1 if stop else len(func_names)
-    else:
-        # assuming a single step
-        start = func_names.index(steps_filter)
-        stop = start + 1
-
-    for step_func, step_desc in steps_funcs[start:stop]:
-        if step_desc:
-            print(step_desc + '...', end=' ')
-
-        config_update = step_func(**config)
-        if config_update is not None:
-            assert isinstance(config_update, dict)
-            config.update(config_update)
-
-        if step_desc:
-            print("done.")
 
 
 def make_release(local_repository, package_name, module_name, release_name='dev', steps_filter=':', branch='master',

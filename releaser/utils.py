@@ -9,7 +9,6 @@ from os.path import join
 from shutil import rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
-
 # ------------- #
 # generic tools #
 # ------------- #
