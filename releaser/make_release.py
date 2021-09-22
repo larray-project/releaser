@@ -237,14 +237,17 @@ def push_on_pypi(build_dir, public_release, **extra_kwargs):
 
     chdir(build_dir)
 
-    cmd = ['python', 'setup.py', 'clean', 'register', 'sdist', 'bdist_wheel', '--universal', 'upload', '-r', 'pypi']
+    print(echocall(['python', 'setup.py', 'clean', 'sdist', 'bdist_wheel']))
+    print(echocall(['twine', 'check', 'dist/*']))
+    print(echocall(['twine', 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*']))
+    cmd = ['twine', 'upload', 'dist/*']
     msg = f"""Ready to push on pypi? If so, command line 
     {' '.join(cmd)} 
 will now be executed.
 """
     if no(msg):
         exit(1)
-    echocall(cmd)
+    print(echocall(cmd))
 
 
 def pull_in_local_repo(local_repository, public_release, branch, **extra_kwargs):
