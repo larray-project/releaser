@@ -2,8 +2,10 @@
 # Release script
 # Licence: GPLv3
 # Requires:
-# * git
+# * git with a Personal Access Token to access the Github repositories
 # * a local git repository with a remote called 'upstream'
+# * conda-build (to build conda packages)
+# * twine (to upload packages to pypi)
 import sys
 from datetime import date
 from os import makedirs
