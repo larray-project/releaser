@@ -243,7 +243,7 @@ def push_on_pypi(build_dir, public_release, **extra_kwargs):
     print(echocall(['twine', 'check', 'dist/*']))
     print(echocall(['twine', 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*']))
     cmd = ['twine', 'upload', 'dist/*']
-    msg = f"""Ready to push on pypi? If so, command line 
+    msg = f"""Ready to push on production pypi? If so, command line 
     {' '.join(cmd)} 
 will now be executed.
 """
