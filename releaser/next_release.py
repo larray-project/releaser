@@ -39,13 +39,14 @@ def update_changelog(src_documentation, build_dir, release_name, changelog_index
             return
         this_version = changelog_index_template.format(title=title,
                                                        underline="=" * len(title),
-                                                       fname= fname)
+                                                       fname=fname)
         lines[3:3] = this_version.splitlines(True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
+    changelog_lines_to_show = 20
     with open(fpath, encoding='utf-8-sig') as f:
-        print('\n'.join(f.read().splitlines()[:20]))
-    if no('Does the full changelog look right?'):
+        print('\n'.join(f.read().splitlines()[:changelog_lines_to_show]))
+    if no(f'Do the {changelog_lines_to_show} first lines of the full changelog look right?'):
         exit(1)
     echocall(['git', 'add', fpath, changelog_file])
 
