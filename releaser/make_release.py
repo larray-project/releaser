@@ -120,10 +120,21 @@ def check_clone(build_dir, public_release, src_documentation, release_name, upst
         if no('Does the release changelog look right?'):
             exit(1)
 
-    # set upstream remote
+
+def setup_repository_remotes(build_dir, upstream_repository=None, origin_repository=None,
+                             **extra_kwargs):
     chdir(build_dir)
-    doechocall(f'setting upstream to {upstream_repository}',
-               ['git', 'remote', 'add', 'upstream', upstream_repository])
+
+    # set upstream remote
+    if upstream_repository is not None:
+        doechocall(f'setting upstream to {upstream_repository}',
+                   ['git', 'remote', 'add', 'upstream', upstream_repository])
+
+    # set origin remote
+    if origin_repository is not None:
+        # assumes origin remote already exist
+        doechocall(f'setting origin to {origin_repository}',
+                   ['git', 'remote', 'set-url', 'origin', origin_repository])
 
 
 def update_version(build_dir, release_name, package_name, module_name, public_release, **extra_kwargs):
@@ -305,6 +316,7 @@ steps_funcs = [
     (create_tmp_directory, ''),
     (clone_repository, ''),
     (check_clone, ''),
+    (setup_repository_remotes, ''),
     (update_version, ''),
     (update_changelog, 'Updating changelog'),
     # (create_source_archive, 'Creating source archive'),

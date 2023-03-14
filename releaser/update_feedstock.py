@@ -9,7 +9,7 @@ import urllib.request as request
 from os.path import join
 
 from releaser.utils import echocall, doechocall, no, replace_lines, chdir
-from releaser.make_release import create_tmp_directory, clone_repository, cleanup, run_steps
+from releaser.make_release import create_tmp_directory, clone_repository, setup_repository_remotes, cleanup, run_steps
 
 
 # ----- #
@@ -39,7 +39,7 @@ def update_version_conda_forge_package(build_dir, version, main_repository, **ex
     if no('Does that last changes look right?'):
         exit(1)
     doechocall('Adding', ['git', 'add', meta_file])
-    doechocall('Commiting', ['git', 'commit', '-m', f'bump version to {version}'])
+    doechocall('Committing', ['git', 'commit', '-m', f'bump version to {version}'])
 
 
 def push_conda_forge(build_dir, branch, **extra_kwargs):
@@ -54,13 +54,15 @@ def push_conda_forge(build_dir, branch, **extra_kwargs):
 steps_funcs = [
     (create_tmp_directory, ''),
     (clone_repository, ''),
+    (setup_repository_remotes, ''),
     (update_version_conda_forge_package, ''),
     (push_conda_forge, ''),
     (cleanup, 'Cleaning up'),
 ]
 
 
-def set_config_conda(upstream_repository, feedstock_repository, module_name, version, branch, tmp_dir):
+def set_config_conda(upstream_repository, upstream_feedstock_repository, origin_feedstock_repository,
+                     module_name, version, branch, tmp_dir):
     if tmp_dir is None:
         tmp_dir = join(r"c:\tmp" if sys.platform == "win32" else "/tmp", f"{module_name}_feedstock")
 
@@ -69,14 +71,17 @@ def set_config_conda(upstream_repository, feedstock_repository, module_name, ver
         'branch': branch,
         'version': version,
         'main_repository': upstream_repository,
-        'upstream_repository': feedstock_repository,
+        'upstream_repository': upstream_feedstock_repository,
+        'origin_repository': origin_feedstock_repository,
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build'),
     }
     return config
 
 
-def update_feedstock(upstream_repository, feedstock_repository, module_name, release_name, steps_filter=':',
-                     branch='master', tmp_dir=None):
-    config = set_config_conda(upstream_repository, feedstock_repository, module_name, release_name, branch, tmp_dir)
+def update_feedstock(upstream_repository, upstream_feedstock_repository, origin_feedstock_repository,
+                     module_name, release_name, steps_filter=':',
+                     branch='main', tmp_dir=None):
+    config = set_config_conda(upstream_repository, upstream_feedstock_repository, origin_feedstock_repository,
+                              module_name, release_name, branch, tmp_dir)
     run_steps(config, steps_funcs, steps_filter)
