@@ -5,6 +5,8 @@
 # * git with a Personal Access Token to access the Github repositories
 # * a local git repository with a remote called 'upstream'
 # * conda-build (to build conda packages)
+# * conda-verify (to check built packages)
+# * anaconda-client (to upload packages)
 # * twine (to upload packages to pypi)
 import sys
 from datetime import date
@@ -18,6 +20,47 @@ from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short
 # ----- #
 # steps #
 # ----- #
+
+
+# TODO:
+#  * create a specific environment to run the make_release script (which contains all step dependencies)
+#  * create a requirements.txt or environment.yml with those dependencies so that we can recreate
+#    the environment easily
+def check_steps_requirements(**extra_kwargs):
+    print("Checking releaser steps requirements")
+    print("====================================")
+    print()
+    steps_functions = [func for func, comment in steps_funcs]
+    must_stop = False
+    if push_on_pypi in steps_functions:
+        try:
+            import twine
+        except ImportError as e:
+            print(f"Releaser will not be able to 'push_on_pypi' because the 'twine' package is not installed ({e})")
+            must_stop = True
+
+    if build_conda_packages in steps_functions:
+        try:
+            import binstar_client  # for anaconda_client
+            import conda_build
+            import conda_verify
+        except ImportError as e:
+            print(f"""\
+Releaser will not be able to 'build_conda_packages' because either at least one of 
+the following packages is not installed (module name in parentheses):
+
+  * anaconda-client (binstar_client)
+  * conda-build (conda_build)
+  * conda-verify (conda_verify)
+  
+Error: {e}""")
+            must_stop = True
+
+    if must_stop:
+        sys.exit(1)
+    else:
+        print("OK")
+        print()
 
 
 def check_local_repo(local_repository, branch, release_name, **extra_kwargs):
@@ -312,6 +355,7 @@ def cleanup(tmp_dir, **extra_kwargs):
 # ------------ #
 
 steps_funcs = [
+    (check_steps_requirements, ''),
     (check_local_repo, ''),
     (create_tmp_directory, ''),
     (clone_repository, ''),
