@@ -308,3 +308,13 @@ def git_remote_url(remote_name='origin'):
     output_lines = call(['git', 'remote', 'get-url', remote_name]).splitlines()
     assert len(output_lines) == 1
     return output_lines[0]
+
+
+def prepare_outlook_email(to: str, subject:str, body:str):
+    import win32com.client as win32
+    outlook = win32.Dispatch('outlook.application')
+    mail = outlook.CreateItem(0)
+    mail.To = to
+    mail.Subject = subject
+    mail.Body = body
+    mail.Display(True)
