@@ -294,6 +294,7 @@ def push_on_pypi(build_dir, public_release, **extra_kwargs):
     chdir(build_dir)
 
     print(echocall(['python', 'setup.py', 'clean', 'sdist', 'bdist_wheel']))
+    print("Enter your username (the prompt is invisible!) then password (the prompt is visible):")
     print(echocall(['twine', 'check', 'dist/*']))
     print(echocall(['twine', 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*']))
     cmd = ['twine', 'upload', 'dist/*']
