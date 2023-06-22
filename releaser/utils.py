@@ -263,6 +263,7 @@ def replace_lines(fpath, changes, line_end="\n"):
         lines = f.readlines()
         for i, line in enumerate(lines[:]):
             for substring_to_find, new_line in changes:
+                # TODO: allow replacing before a comment start
                 if substring_to_find in line and not line.strip().startswith('#'):
                     lines[i] = new_line + line_end
     with open(fpath, 'w') as f:

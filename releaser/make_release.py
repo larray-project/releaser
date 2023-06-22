@@ -64,6 +64,8 @@ Error: {e}""")
 
 
 def check_local_repo(local_repository, branch, release_name, **extra_kwargs):
+    # TODO: I don't think this comment still applies (but it's still interesting to check
+    #       local repo to avoid uncommitted/unpushed changes)
     # releasing from the local clone has the advantage we can prepare the
     # release offline and only push and upload it when we get back online
     print("\n", underline(f"Using repository at: {local_repository} !"), "\n", sep='')
