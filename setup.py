@@ -11,6 +11,7 @@ AUTHOR = 'Gaetan de Menten, Geert Bryon, Johan Duyck, Alix Damman'
 AUTHOR_EMAIL = 'gdementen@gmail.com'
 DESCRIPTION = "Tools for releasing projects"
 LONG_DESCRIPTION = readlocal("README.md")
+LONG_DESCRIPTION_CONTENT_TYPE = "text/markdown"
 LICENSE = 'GPLv3'
 URL = 'https://github.com/larray-project/releaser'
 
@@ -38,6 +39,7 @@ setup(
     classifiers=CLASSIFIERS,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    long_description_content_type=LONG_DESCRIPTION_CONTENT_TYPE,
     url=URL,
     packages=find_packages(),
 )
