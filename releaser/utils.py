@@ -100,14 +100,14 @@ def echocall(*args, **kwargs):
 
 def underline(s, c='='):
     """
-    returns `s` string underlined using `c`
+    Return `s` string underlined using `c`
     """
     return f"{s}\n{c * len(s)}\n"
 
 
 def branchname(statusline):
     """
-    computes the branch name from a "git status -b -s" line
+    Compute the branch name from a "git status -b -s" line
     ## master...origin/master
     """
     statusline = statusline.replace('#', '').strip()
@@ -116,7 +116,7 @@ def branchname(statusline):
 
 
 def yes(msg, default='y'):
-    """returns True if the user answers y(es) (which is the default answer)"""
+    """Return True if the user answers y(es) (which is the default answer)"""
     y = "Y" if default == "y" else "y"
     n = "N" if default == "n" else "n"
     choices = f' ({y}/{n}) '
@@ -129,7 +129,7 @@ def yes(msg, default='y'):
 
 
 def no(msg, default='n'):
-    """returns True if the user answers n(o) (which is the default answer)"""
+    """Return True if the user answers n(o) (which is the default answer)"""
     return not yes(msg, default)
 
 
@@ -166,7 +166,8 @@ def short(rel_name):
 
 def long_release_name(release_name):
     """
-    transforms a short release name such as 0.8 to a long one such as 0.8.0
+    Transform a short release name such as 0.8 to a long one such as 0.8.0
+
     >>> long_release_name('0.8')
     '0.8.0'
     >>> long_release_name('0.8.0')
@@ -188,7 +189,7 @@ def long_release_name(release_name):
 
 def pretag_pos(release_name):
     """
-    gives the position of any pre-release tag
+    Give the position of any pre-release tag
     >>> pretag_pos('0.8')
     >>> pretag_pos('0.8alpha25')
     3
@@ -205,7 +206,7 @@ def pretag_pos(release_name):
 
 def strip_pretags(release_name):
     """
-    removes pre-release tags from a version string
+    Remove pre-release tags from a version string
     >>> strip_pretags('0.8')
     '0.8'
     >>> strip_pretags('0.8alpha25')
@@ -219,7 +220,7 @@ def strip_pretags(release_name):
 
 def isprerelease(release_name):
     """
-    tests whether the release name contains any pre-release tag
+    Test whether the release name contains any pre-release tag
     >>> isprerelease('0.8')
     False
     >>> isprerelease('0.8alpha25')
