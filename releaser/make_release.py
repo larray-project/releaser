@@ -12,7 +12,6 @@ import sys
 from datetime import date
 from os import makedirs
 from os.path import exists, join
-from subprocess import check_call
 
 from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short, git_remote_last_rev,
                             git_remote_url, release_changes, echocall, chdir, underline, replace_lines)
@@ -20,6 +19,30 @@ from releaser.utils import (call, doechocall, yes, no, rmtree, branchname, short
 # ----- #
 # steps #
 # ----- #
+
+
+def _anaconda_logged_user():
+    whoami = echocall(["anaconda", "org", "whoami"])
+    # returns either
+    # """
+    # Using Anaconda API: https://api.anaconda.org
+    # Anonymous User
+    # """
+    # or
+    # """
+    # Using Anaconda API: https://api.anaconda.org
+    # Username: gdementen
+    # <other lines>
+    # """
+    lines = whoami.splitlines()
+    assert len(lines) >= 2
+    assert lines[0].startswith('Using')
+    if lines[1].startswith('Username: '):
+        username = lines[1][10:]
+        return username
+    else:
+        assert lines[1].startswith('Anonymous')
+        return ''
 
 
 # TODO:
@@ -40,8 +63,10 @@ def check_steps_requirements(**extra_kwargs):
             must_stop = True
 
     if build_conda_packages in steps_functions:
+        has_binstar = False
         try:
             import binstar_client  # for anaconda_client
+            has_binstar = True
             import conda_build
             import conda_verify
         except ImportError as e:
@@ -56,6 +81,16 @@ the following packages is not installed (module name in parentheses):
 Error: {e}""")
             must_stop = True
 
+        if has_binstar and upload_conda_packages in steps_functions:
+            username = _anaconda_logged_user()
+            if username:
+                print(f"logged in anaconda as: {username}")
+            else:
+                print(f"""\
+No user logged to anaconda. Please use 'anaconda org login' and using your 
+anaconda.org username (NOT larray-project) before running
+this script, otherwise it cannot upload packages to anaconda.""")
+                must_stop = True
     if must_stop:
         sys.exit(1)
     else:
@@ -328,7 +363,8 @@ def push(build_dir, public_release, branch, **extra_kwargs):
                ['git', 'push', 'upstream', branch, '--follow-tags'])
 
 
-def build_conda_packages(conda_recipe_path, build_dir, conda_build_args, **extra_kwargs):
+def build_conda_packages(conda_recipe_path, build_dir, conda_build_args,
+                         **extra_kwargs):
     if conda_recipe_path is None:
         return
 
@@ -336,16 +372,44 @@ def build_conda_packages(conda_recipe_path, build_dir, conda_build_args, **extra
     print()
     print('Building conda packages')
     print('=======================')
-    # XXX: split build & upload? (--no-anaconda-upload)
-    cmd = ['conda', 'build']
+    cmd = ['conda', 'build', '--no-anaconda-upload']
     if conda_build_args:
         # transform dict to flat list
         for arg_name, arg_value in conda_build_args.items():
             cmd += [arg_name, arg_value]
     cmd += [conda_recipe_path]
-    print(' '.join(cmd))
-    print(flush=True)
-    check_call(cmd)
+    echocall(cmd)
+
+
+# workaround for https://github.com/conda/conda-build/issues/5823
+def _cleanup_conda_build_output(fpath):
+    lines = fpath.splitlines()
+    return lines[-1]
+
+
+def upload_conda_packages(conda_recipe_path, build_dir, anaconda_upload_args,
+                          **extra_kwargs):
+    if conda_recipe_path is None:
+        return
+
+    chdir(build_dir)
+    print()
+    print('Uploading conda packages')
+    print('========================')
+    # TODO: this will break if there are more than one package
+    built_package_path = _cleanup_conda_build_output(
+        echocall(['conda', 'build', '--output', conda_recipe_path])
+    )
+    print()
+    print(f"{built_package_path=}")
+    print()
+    cmd = ['anaconda', 'org', 'upload']
+    if anaconda_upload_args:
+        # transform dict to flat list
+        for arg_name, arg_value in anaconda_upload_args.items():
+            cmd += [arg_name, arg_value]
+    cmd += [built_package_path]
+    echocall(cmd)
 
 
 def cleanup(tmp_dir, **extra_kwargs):
@@ -371,7 +435,8 @@ steps_funcs = [
     (tag_release, 'Tagging release'),
     (push, ''),
     (push_on_pypi, 'Pushing on Pypi'),
-    (build_conda_packages, ''),
+    (build_conda_packages, 'Building conda packages'),
+    (upload_conda_packages, 'Uploading conda packages'),
     # assume the tar archive for the new release exists
     (cleanup, 'Cleaning up'),
     (pull_in_local_repo, ''),
@@ -389,19 +454,8 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     steps_funcs.insert(index, (func, msg))
 
 
-def run_steps(config, steps_funcs, steps_filter):
-    func_names = [f.__name__ for f, desc in steps_funcs]
-    if ':' in steps_filter:
-        start, stop = steps_filter.split(':')
-        start = func_names.index(start) if start else 0
-        # + 1 so that stop bound is inclusive
-        stop = func_names.index(stop) + 1 if stop else len(func_names)
-    else:
-        # assuming a single step
-        start = func_names.index(steps_filter)
-        stop = start + 1
-
-    for step_func, step_desc in steps_funcs[start:stop]:
+def run_steps(config, steps_funcs):
+    for step_func, step_desc in steps_funcs:
         if step_desc:
             print(step_desc + '...', end=' ')
 
@@ -414,8 +468,12 @@ def run_steps(config, steps_funcs, steps_filter):
             print("done.")
 
 
-def set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
-               tmp_dir=None, conda_build_args=None, changelog_index_template=None, create_build_dir=True):
+def set_config(local_repository, package_name, module_name, release_name,
+               branch, src_documentation,
+               tmp_dir=None,
+               conda_build_args=None, anaconda_upload_args=None,
+               conda_recipe_path=None,
+               changelog_index_template=None, create_build_dir=True):
     if conda_build_args is not None and not isinstance(conda_build_args, dict):
         raise TypeError("'conda_build_args' argument must be None or a dict")
 
@@ -432,7 +490,8 @@ def set_config(local_repository, package_name, module_name, release_name, branch
                        f"{module_name}_release")
 
     # TODO: make this configurable
-    conda_recipe_path = fr'condarecipe/{package_name}'
+    if conda_recipe_path is None:
+        conda_recipe_path = fr'condarecipe/{package_name}'
     config = {
         'branch': branch,
         'release_name': release_name,
@@ -443,6 +502,7 @@ def set_config(local_repository, package_name, module_name, release_name, branch
         'tmp_dir': tmp_dir,
         'build_dir': join(tmp_dir, 'build') if create_build_dir else local_repository,
         'conda_build_args': conda_build_args,
+        'anaconda_upload_args': anaconda_upload_args,
         'conda_recipe_path': conda_recipe_path,
         'public_release': public_release,
         'changelog_index_template': changelog_index_template,
@@ -450,8 +510,25 @@ def set_config(local_repository, package_name, module_name, release_name, branch
     return config
 
 
+def filter_step_funcs(steps_funcs, steps_filter):
+    func_names = [f.__name__ for f, desc in steps_funcs]
+    if ':' in steps_filter:
+        start, stop = steps_filter.split(':')
+        start = func_names.index(start) if start else 0
+        # + 1 so that stop bound is inclusive
+        stop = func_names.index(stop) + 1 if stop else len(func_names)
+    else:
+        # assuming a single step
+        start = func_names.index(steps_filter)
+        stop = start + 1
+    return steps_funcs[start:stop]
+
+
 def make_release(local_repository, package_name, module_name, release_name='dev', steps_filter=':', branch='master',
-                 src_documentation=None, tmp_dir=None, conda_build_args=None):
-    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
-                        tmp_dir, conda_build_args)
-    run_steps(config, steps_funcs, steps_filter)
+                 src_documentation=None, tmp_dir=None, conda_build_args=None, anaconda_upload_args=None):
+    filtered_step_funcs = filter_step_funcs(steps_funcs, steps_filter)
+    config = set_config(local_repository, package_name, module_name,
+                        release_name, branch, src_documentation,
+                        tmp_dir=tmp_dir, conda_build_args=conda_build_args,
+                        anaconda_upload_args=anaconda_upload_args)
+    run_steps(config, filtered_step_funcs)
