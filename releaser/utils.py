@@ -1,4 +1,3 @@
-import sys
 import errno
 import fnmatch
 import os
@@ -93,8 +92,7 @@ call failed
 def echocall(*args, **kwargs):
     assert len(args) == 1 and isinstance(args[0], list)
     end = kwargs.pop('end', '\n')
-    print(' '.join(args[0]), end=end)
-    sys.stdout.flush()
+    print(' '.join(args[0]), end=end, flush=True)
     return call(*args, **kwargs)
 
 
