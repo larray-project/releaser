@@ -254,16 +254,15 @@ def replace_lines(fpath, changes, line_end="\n"):
     fpath : str
         Path to the file to modify.
     changes : list of pairs
-        List of pairs (substring_to_find, new_line).
+        List of pairs (prefix_to_find, new_line).
     line_end : str, optional
         Character to use at end of line.
     """
     with open(fpath) as f:
         lines = f.readlines()
         for i, line in enumerate(lines[:]):
-            for substring_to_find, new_line in changes:
-                # TODO: allow replacing before a comment start
-                if substring_to_find in line and not line.strip().startswith('#'):
+            for prefix_to_find, new_line in changes:
+                if line.startswith(prefix_to_find):
                     lines[i] = new_line + line_end
     with open(fpath, 'w') as f:
         f.writelines(lines)
