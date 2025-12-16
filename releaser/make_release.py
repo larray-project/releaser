@@ -55,6 +55,16 @@ def check_steps_requirements(step_funcs, **extra_kwargs):
     print()
     step_functions = [func for func, comment in step_funcs]
     must_stop = False
+    if build_pypi_packages in step_functions:
+        try:
+            import build
+            _ = build.ProjectBuilder
+        except (ImportError, AttributeError) as e:
+            print("Releaser will not be able to 'build_pypi_packages' because "
+                  f"the 'build' package is not installed ({e}). Install it"
+                  "with 'pip install build'")
+            must_stop = True
+
     if upload_pypi_packages in step_functions:
         try:
             import twine
@@ -95,7 +105,7 @@ this script, otherwise it cannot upload packages to anaconda.""")
     if must_stop:
         sys.exit(1)
     else:
-        print("OK")
+        print("OK (all requirements satisfied)")
         print()
 
 
@@ -325,13 +335,15 @@ def tag_release(build_dir, public_release, release_name, **extra_kwargs):
     echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
-def build_pypi(build_dir, public_release, **extra_kwargs):
+def build_pypi_packages(build_dir, public_release, **extra_kwargs):
     if not public_release:
         return
 
     chdir(build_dir)
 
-    print(echocall(['python', 'setup.py', 'clean', 'sdist', 'bdist_wheel']))
+    # By default, a source distribution (sdist) is built from {srcdir} and a
+    # binary distribution (wheel) is built from the sdist
+    print(echocall(['python', '-m', 'build', '.']))
     print(echocall(['twine', 'check', 'dist/*']))
 
 
@@ -440,8 +452,7 @@ steps_funcs = [
     (update_version, ''),
     (update_changelog, 'Updating changelog'),
     # (create_source_archive, 'Creating source archive'),
-    (build_pypi, 'Building pypi packages'),
-    (build_conda_packages, 'Building conda packages'),
+    (build_pypi_packages, 'Building pypi packages'),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     (push, ''),
