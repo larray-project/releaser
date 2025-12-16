@@ -390,10 +390,10 @@ def build_conda_packages(conda_recipe_path, build_dir, conda_build_args,
     if conda_recipe_path is None:
         return
 
-    chdir(build_dir)
     print()
     print('Building conda packages')
     print('=======================')
+    chdir(build_dir)
     cmd = ['conda', 'build', '--no-anaconda-upload']
     if conda_build_args:
         # transform dict to flat list
@@ -414,10 +414,10 @@ def upload_conda_packages(conda_recipe_path, build_dir, anaconda_upload_args,
     if conda_recipe_path is None:
         return
 
-    chdir(build_dir)
     print()
     print('Uploading conda packages')
     print('========================')
+    chdir(build_dir)
     # TODO: this will break if there are more than one package
     built_package_path = _cleanup_conda_build_output(
         echocall(['conda', 'build', '--output', conda_recipe_path])
