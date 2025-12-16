@@ -238,12 +238,13 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
     changes = [('__version__ =', f"__version__ = '{version}'")]
     replace_lines(init_file, changes)
 
-    # setup.py
-    setup_file = 'setup.py'
-    changes = [('VERSION =', f"VERSION = '{version}'")]
-    replace_lines(setup_file, changes)
+    # pyproject.toml
+    pyproject_file = 'pyproject.toml'
+    # version = "0.35-dev"
+    changes = [('version =', f'version = "{version}"')]
+    replace_lines(pyproject_file, changes)
 
-    changed_files = [init_file, setup_file]
+    changed_files = [init_file, pyproject_file]
 
     # meta.yaml
     if public_release and not release_name.endswith('-dev'):
