@@ -55,11 +55,12 @@ def check_steps_requirements(step_funcs, **extra_kwargs):
     print()
     step_functions = [func for func, comment in step_funcs]
     must_stop = False
-    if push_on_pypi in step_functions:
+    if upload_pypi_packages in step_functions:
         try:
             import twine
         except ImportError as e:
-            print(f"Releaser will not be able to 'push_on_pypi' because the 'twine' package is not installed ({e})")
+            print(f"Releaser will not be able to 'upload_pypi_packages' "
+                  f"because the 'twine' package is not installed ({e})")
             must_stop = True
 
     if build_conda_packages in step_functions:
@@ -324,7 +325,7 @@ def tag_release(build_dir, public_release, release_name, **extra_kwargs):
     echocall(['git', 'tag', '-a', release_name, '-m', f'tag release {release_name}'])
 
 
-def push_on_pypi(build_dir, public_release, **extra_kwargs):
+def build_pypi(build_dir, public_release, **extra_kwargs):
     if not public_release:
         return
 
@@ -332,6 +333,14 @@ def push_on_pypi(build_dir, public_release, **extra_kwargs):
 
     print(echocall(['python', 'setup.py', 'clean', 'sdist', 'bdist_wheel']))
     print(echocall(['twine', 'check', 'dist/*']))
+
+
+def upload_pypi_packages(build_dir, public_release, **extra_kwargs):
+    if not public_release:
+        return
+
+    chdir(build_dir)
+
     print("Enter your username (the prompt is invisible!) then password (the prompt is visible):")
     print(echocall(['twine', 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*']))
     cmd = ['twine', 'upload', 'dist/*']
@@ -431,11 +440,15 @@ steps_funcs = [
     (update_version, ''),
     (update_changelog, 'Updating changelog'),
     # (create_source_archive, 'Creating source archive'),
+    (build_pypi, 'Building pypi packages'),
+    (build_conda_packages, 'Building conda packages'),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     (push, ''),
-    (push_on_pypi, 'Pushing on Pypi'),
-    (build_conda_packages, 'Building conda packages'),
+    (upload_pypi_packages, 'Uploading packages to pypi'),
+    # we cannot build conda packages before tag_release+push because we use
+    # the git tag
+    (build_conda_packages, ''),
     (upload_conda_packages, 'Uploading conda packages'),
     # assume the tar archive for the new release exists
     (cleanup, 'Cleaning up'),
