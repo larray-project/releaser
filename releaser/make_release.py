@@ -49,20 +49,20 @@ def _anaconda_logged_user():
 #  * create a specific environment to run the make_release script (which contains all step dependencies)
 #  * create a requirements.txt or environment.yml with those dependencies so that we can recreate
 #    the environment easily
-def check_steps_requirements(**extra_kwargs):
+def check_steps_requirements(step_funcs, **extra_kwargs):
     print("Checking releaser steps requirements")
     print("====================================")
     print()
-    steps_functions = [func for func, comment in steps_funcs]
+    step_functions = [func for func, comment in step_funcs]
     must_stop = False
-    if push_on_pypi in steps_functions:
+    if push_on_pypi in step_functions:
         try:
             import twine
         except ImportError as e:
             print(f"Releaser will not be able to 'push_on_pypi' because the 'twine' package is not installed ({e})")
             must_stop = True
 
-    if build_conda_packages in steps_functions:
+    if build_conda_packages in step_functions:
         has_binstar = False
         try:
             import binstar_client  # for anaconda_client
@@ -81,7 +81,7 @@ the following packages is not installed (module name in parentheses):
 Error: {e}""")
             must_stop = True
 
-        if has_binstar and upload_conda_packages in steps_functions:
+        if has_binstar and upload_conda_packages in step_functions:
             username = _anaconda_logged_user()
             if username:
                 print(f"logged in anaconda as: {username}")
@@ -183,7 +183,7 @@ def clone_repository(tmp_dir, branch, upstream_repository, **extra_kwargs):
     doechocall('Cloning repository', ['git', 'clone', '-b', branch, upstream_repository, 'build'])
 
 
-def check_clone(build_dir, public_release, src_documentation, release_name, upstream_repository, **extra_kwargs):
+def check_clone(build_dir, public_release, src_documentation, release_name, **extra_kwargs):
     chdir(build_dir)
 
     # check last commit
@@ -444,6 +444,8 @@ steps_funcs = [
 
 
 def insert_step_func(func, msg='', index=None, before=None, after=None):
+    # TODO: do not use a global steps_funcs variable (but instead pass them to
+    #       make_release)
     if sum((index is not None, before is not None, after is not None)) != 1:
         raise ValueError("You must choose between arguments 'index', 'before' and 'after'")
     func_names = [f.__name__ for f, desc in steps_funcs]
@@ -454,8 +456,8 @@ def insert_step_func(func, msg='', index=None, before=None, after=None):
     steps_funcs.insert(index, (func, msg))
 
 
-def run_steps(config, steps_funcs):
-    for step_func, step_desc in steps_funcs:
+def run_steps(config, step_funcs):
+    for step_func, step_desc in step_funcs:
         if step_desc:
             print(step_desc + '...', end=' ')
 
@@ -468,7 +470,8 @@ def run_steps(config, steps_funcs):
             print("done.")
 
 
-def set_config(local_repository, package_name, module_name, release_name,
+def set_config(step_funcs,
+               local_repository, package_name, module_name, release_name,
                branch, src_documentation,
                tmp_dir=None,
                conda_build_args=None, anaconda_upload_args=None,
@@ -493,6 +496,7 @@ def set_config(local_repository, package_name, module_name, release_name,
     if conda_recipe_path is None:
         conda_recipe_path = fr'condarecipe/{package_name}'
     config = {
+        'step_funcs': step_funcs,
         'branch': branch,
         'release_name': release_name,
         'package_name': package_name,
@@ -510,8 +514,8 @@ def set_config(local_repository, package_name, module_name, release_name,
     return config
 
 
-def filter_step_funcs(steps_funcs, steps_filter):
-    func_names = [f.__name__ for f, desc in steps_funcs]
+def filter_step_funcs(step_funcs, steps_filter):
+    func_names = [f.__name__ for f, desc in step_funcs]
     if ':' in steps_filter:
         start, stop = steps_filter.split(':')
         start = func_names.index(start) if start else 0
@@ -521,13 +525,16 @@ def filter_step_funcs(steps_funcs, steps_filter):
         # assuming a single step
         start = func_names.index(steps_filter)
         stop = start + 1
-    return steps_funcs[start:stop]
+    return step_funcs[start:stop]
 
 
 def make_release(local_repository, package_name, module_name, release_name='dev', steps_filter=':', branch='master',
                  src_documentation=None, tmp_dir=None, conda_build_args=None, anaconda_upload_args=None):
+    # TODO: do not use the global variable (but pass step_funcs as argument
+    #       instead)
     filtered_step_funcs = filter_step_funcs(steps_funcs, steps_filter)
-    config = set_config(local_repository, package_name, module_name,
+    config = set_config(filtered_step_funcs,
+                        local_repository, package_name, module_name,
                         release_name, branch, src_documentation,
                         tmp_dir=tmp_dir, conda_build_args=conda_build_args,
                         anaconda_upload_args=anaconda_upload_args)
