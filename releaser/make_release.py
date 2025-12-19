@@ -348,14 +348,25 @@ def build_pypi_packages(build_dir, public_release, **extra_kwargs):
     print(echocall(['twine', 'check', 'dist/*']))
 
 
+def upload_test_pypi_packages(build_dir, public_release, **extra_kwargs):
+    if not public_release:
+        return
+
+    chdir(build_dir)
+
+    print("Enter your API token (there is no echo!):")
+    print(echocall(['twine', 'upload',
+                    '--repository-url', 'https://test.pypi.org/legacy/',
+                    'dist/*']))
+
+
 def upload_pypi_packages(build_dir, public_release, **extra_kwargs):
     if not public_release:
         return
 
     chdir(build_dir)
 
-    print("Enter your username (the prompt is invisible!) then password (the prompt is visible):")
-    print(echocall(['twine', 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*']))
+    print("Enter your API token (there is no echo!):")
     cmd = ['twine', 'upload', 'dist/*']
     msg = f"""Ready to push on production pypi? If so, command line 
     {' '.join(cmd)} 
@@ -457,6 +468,7 @@ steps_funcs = [
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     (push, ''),
+    (upload_test_pypi_packages, 'Uploading packages to test pypi'),
     (upload_pypi_packages, 'Uploading packages to pypi'),
     # we cannot build conda packages before tag_release+push because we use
     # the git tag
