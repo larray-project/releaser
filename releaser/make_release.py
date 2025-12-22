@@ -155,8 +155,13 @@ def check_local_repo(local_repository, branch, release_name, **extra_kwargs):
         if yes(', do you want to merge (fast-forward) the new changes?'):
             doechocall('Merging (fast-forward) changes', ['git', 'merge', '--ff-only', f'upstream/{branch}'])
     elif num_ahead:
-        if yes(', do you want to push it?'):
-            doechocall('Pushing changes', ['git', 'push', 'upstream', branch])
+        if yes(', do you want to push the changes (if they contain any *code* '
+               'changes, you should make a PR instead so that CI can run on all'
+               'Python versions)?', default='n'):
+            git_push_cmd = ['git', 'push', 'upstream', branch]
+            doechocall('Pushing changes', git_push_cmd)
+        else:
+            exit(1)
     else:
         print()
 
