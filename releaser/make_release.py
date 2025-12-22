@@ -402,6 +402,44 @@ def push(build_dir, public_release, branch, **extra_kwargs):
                ['git', 'push', 'upstream', branch, '--follow-tags'])
 
 
+def build_test_conda_packages(conda_recipe_path, build_dir, package_name,
+                              conda_build_args, **extra_kwargs):
+    if conda_recipe_path is None:
+        return
+
+    print()
+    print('Building test conda packages')
+    print('============================')
+    chdir(build_dir)
+
+    print()
+    print("changing conda recipe to use local path for source")
+    meta_file = join('condarecipe', package_name, 'meta.yaml')
+    # we need to transform the git_url and git_tag lines to use the local path:
+    #   git_tag: {{ version }}
+    #   git_url: https://github.com/larray-project/larray.git
+    # by
+    #   path: ../../
+    replace_lines(meta_file, [
+        ('  git_tag', '  path: ../../'),
+        ('  git_url', '')
+    ])
+    print(echocall(['git', 'diff', meta_file]))
+    print()
+
+    cmd = ['conda', 'build', '--no-anaconda-upload']
+    if conda_build_args:
+        # transform dict to flat list
+        for arg_name, arg_value in conda_build_args.items():
+            cmd += [arg_name, arg_value]
+    cmd += [conda_recipe_path]
+    print(echocall(cmd))
+    # delete built packages
+    print(echocall(['conda', 'build', 'purge']))
+    # rollback our changes to the recipe file
+    print(echocall(['git', 'restore', meta_file]))
+
+
 def build_conda_packages(conda_recipe_path, build_dir, conda_build_args,
                          **extra_kwargs):
     if conda_recipe_path is None:
@@ -471,6 +509,7 @@ steps_funcs = [
     (update_changelog, 'Updating changelog'),
     # (create_source_archive, 'Creating source archive'),
     (build_pypi_packages, 'Building pypi packages'),
+    (build_test_conda_packages, ''),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     (push, ''),
