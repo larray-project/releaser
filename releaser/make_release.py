@@ -153,7 +153,8 @@ def check_local_repo(local_repository, branch, release_name, **extra_kwargs):
         exit(1)
     elif num_behind:
         if yes(', do you want to merge (fast-forward) the new changes?'):
-            doechocall('Merging (fast-forward) changes', ['git', 'merge', '--ff-only', f'upstream/{branch}'])
+            git_merge_cmd = ['git', 'merge', '--ff-only', f'upstream/{branch}']
+            doechocall('Merging (fast-forward) changes', git_merge_cmd)
     elif num_ahead:
         if yes(', do you want to push the changes (if they contain any *code* '
                'changes, you should make a PR instead so that CI can run on all'
@@ -254,7 +255,7 @@ def update_version(build_dir, release_name, package_name, module_name, public_re
     # meta.yaml
     if public_release and not release_name.endswith('-dev'):
         meta_file = join('condarecipe', package_name, 'meta.yaml')
-        changes = [('{% set version', '{% set version = "' + version + '" %}'), ]
+        changes = [('{% set version', '{% set version = "' + version + '" %}')]
         replace_lines(meta_file, changes)
         changed_files.append(meta_file)
 
