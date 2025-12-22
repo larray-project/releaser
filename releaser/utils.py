@@ -258,12 +258,17 @@ def replace_lines(fpath, changes, line_end="\n"):
     line_end : str, optional
         Character to use at end of line.
     """
+    num_lines_changed = 0
     with open(fpath) as f:
         lines = f.readlines()
         for i, line in enumerate(lines[:]):
             for prefix_to_find, new_line in changes:
                 if line.startswith(prefix_to_find):
+                    num_lines_changed += 1
                     lines[i] = new_line + line_end
+    if num_lines_changed != len(changes):
+        raise Exception(f"Changed {num_lines_changed} lines instead of the "
+                        f"expected {len(changes)} lines in {fpath} !")
     with open(fpath, 'w') as f:
         f.writelines(lines)
 
