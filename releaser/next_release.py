@@ -56,8 +56,15 @@ def add_release(local_repository, package_name, module_name, release_name, branc
     if changelog_index_template is None:
         changelog_index_template = DEFAULT_CHANGELOG_INDEX_TEMPLATE
 
-    config = set_config(local_repository, package_name, module_name, release_name, branch, src_documentation,
-                        changelog_index_template=changelog_index_template, create_build_dir=False)
+    config = set_config(step_funcs=(),
+                        local_repository=local_repository,
+                        package_name=package_name,
+                        module_name=module_name,
+                        release_name=release_name,
+                        branch=branch,
+                        src_documentation=src_documentation,
+                        changelog_index_template=changelog_index_template,
+                        create_build_dir=False)
 
     if src_documentation is not None:
         update_changelog(**config)
