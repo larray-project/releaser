@@ -413,7 +413,10 @@ def build_test_conda_packages(conda_recipe_path, build_dir, package_name,
     chdir(build_dir)
 
     print()
-    print("changing conda recipe to use local path for source")
+    print("changing conda recipe to use a local path as source")
+    print("(so that we can test building the conda packages before pushing the "
+          "tag to GitHub)")
+    print()
     meta_file = join('condarecipe', package_name, 'meta.yaml')
     # we need to transform the git_url and git_tag lines to use the local path:
     #   git_tag: {{ version }}
